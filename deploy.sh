@@ -21,23 +21,24 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-# Check if docker-compose is installed
-if ! command -v docker-compose > /dev/null 2>&1; then
-    echo "Error: docker-compose is not installed"
+# Check if Docker Compose plugin is available
+if ! docker compose version > /dev/null 2>&1; then
+    echo "Error: Docker Compose plugin is not installed"
+    echo "Please install with: apt install docker-compose-plugin"
     exit 1
 fi
 
 # Stop any existing container
 echo "Stopping any existing containers..."
-docker-compose down || true
+docker compose down || true
 
 # Build the new image
 echo "Building new Docker image..."
-docker-compose build
+docker compose build
 
 # Start the container
 echo "Starting the bot..."
-docker-compose up -d
+docker compose up -d
 
 echo "Deployment complete!"
-echo "Check logs with: docker-compose logs -f" 
+echo "Check logs with: docker compose logs -f" 
