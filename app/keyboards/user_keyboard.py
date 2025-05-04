@@ -24,16 +24,17 @@ class UserKeyboard:
     @staticmethod
     def dashboard_menu() -> InlineKeyboardMarkup:
         """Dashboard menu keyboard."""
-        keyboard = InlineKeyboardMarkup()
-        keyboard.add(InlineKeyboardButton("➕ Add New Alert", callback_data="add_alert"))
-        keyboard.add(InlineKeyboardButton("📊 My Alerts", callback_data="my_alerts"))
-        keyboard.add(InlineKeyboardButton("🔍 Available Tokens", callback_data="available_tokens"))
-        return keyboard
+        buttons = [
+            [InlineKeyboardButton(text="➕ Add New Alert", callback_data="add_alert")],
+            [InlineKeyboardButton(text="📊 My Alerts", callback_data="my_alerts")],
+            [InlineKeyboardButton(text="🔍 Available Tokens", callback_data="available_tokens")]
+        ]
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
     
     @staticmethod
     def token_list(tokens: list, page: int = 0, page_size: int = 5) -> InlineKeyboardMarkup:
         """List of tokens keyboard."""
-        keyboard = InlineKeyboardMarkup()
+        buttons = []
         
         # Calculate pagination
         total_pages = (len(tokens) + page_size - 1) // page_size
@@ -42,48 +43,48 @@ class UserKeyboard:
         
         # Add token buttons
         for token in tokens[start:end]:
-            keyboard.add(InlineKeyboardButton(token, callback_data=f"select_token:{token}"))
+            buttons.append([InlineKeyboardButton(text=token, callback_data=f"select_token:{token}")])
         
         # Add pagination controls
-        row = []
+        pagination_row = []
         if page > 0:
-            row.append(InlineKeyboardButton("⬅️", callback_data=f"token_page:{page-1}"))
+            pagination_row.append(InlineKeyboardButton(text="⬅️", callback_data=f"token_page:{page-1}"))
         
-        row.append(InlineKeyboardButton(f"{page+1}/{total_pages}", callback_data="noop"))
+        pagination_row.append(InlineKeyboardButton(text=f"{page+1}/{total_pages}", callback_data="noop"))
         
         if page < total_pages - 1:
-            row.append(InlineKeyboardButton("➡️", callback_data=f"token_page:{page+1}"))
+            pagination_row.append(InlineKeyboardButton(text="➡️", callback_data=f"token_page:{page+1}"))
         
-        if row:
-            keyboard.row(*row)
+        if pagination_row:
+            buttons.append(pagination_row)
         
         # Add back button
-        keyboard.add(InlineKeyboardButton("🔙 Back", callback_data="back_to_dashboard"))
+        buttons.append([InlineKeyboardButton(text="🔙 Back", callback_data="back_to_dashboard")])
         
-        return keyboard
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
     
     @staticmethod
     def price_multiplier_select(symbol: str) -> InlineKeyboardMarkup:
         """Price multiplier selection keyboard."""
-        keyboard = InlineKeyboardMarkup()
+        buttons = []
         
         # Add price multipliers
         for multiplier in AVAILABLE_PRICE_MULTIPLIERS:
             formatted = f"${multiplier:g}" # Remove trailing zeros
-            keyboard.add(InlineKeyboardButton(
-                formatted, 
+            buttons.append([InlineKeyboardButton(
+                text=formatted, 
                 callback_data=f"set_multiplier:{symbol}:{multiplier}"
-            ))
+            )])
         
         # Add back button
-        keyboard.add(InlineKeyboardButton("🔙 Back", callback_data="available_tokens"))
+        buttons.append([InlineKeyboardButton(text="🔙 Back", callback_data="available_tokens")])
         
-        return keyboard
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
     
     @staticmethod
     def user_alerts(alerts: list, page: int = 0, page_size: int = 5) -> InlineKeyboardMarkup:
         """User alerts keyboard."""
-        keyboard = InlineKeyboardMarkup()
+        buttons = []
         
         # Calculate pagination
         total_pages = (len(alerts) + page_size - 1) // page_size if alerts else 1
@@ -97,64 +98,64 @@ class UserKeyboard:
                 multiplier = alert.price_multiplier
                 status = "✅" if alert.is_active else "❌"
                 
-                keyboard.add(InlineKeyboardButton(
-                    f"{status} {symbol} - ${multiplier:g}",
+                buttons.append([InlineKeyboardButton(
+                    text=f"{status} {symbol} - ${multiplier:g}",
                     callback_data=f"alert_options:{alert.id}"
-                ))
+                )])
         else:
-            keyboard.add(InlineKeyboardButton("No alerts set up yet", callback_data="noop"))
+            buttons.append([InlineKeyboardButton(text="No alerts set up yet", callback_data="noop")])
         
         # Add pagination controls
-        row = []
+        pagination_row = []
         if page > 0:
-            row.append(InlineKeyboardButton("⬅️", callback_data=f"alerts_page:{page-1}"))
+            pagination_row.append(InlineKeyboardButton(text="⬅️", callback_data=f"alerts_page:{page-1}"))
         
         if alerts:
-            row.append(InlineKeyboardButton(f"{page+1}/{total_pages}", callback_data="noop"))
+            pagination_row.append(InlineKeyboardButton(text=f"{page+1}/{total_pages}", callback_data="noop"))
         
         if page < total_pages - 1:
-            row.append(InlineKeyboardButton("➡️", callback_data=f"alerts_page:{page+1}"))
+            pagination_row.append(InlineKeyboardButton(text="➡️", callback_data=f"alerts_page:{page+1}"))
         
-        if row:
-            keyboard.row(*row)
+        if pagination_row:
+            buttons.append(pagination_row)
         
         # Add back button
-        keyboard.add(InlineKeyboardButton("🔙 Back", callback_data="back_to_dashboard"))
+        buttons.append([InlineKeyboardButton(text="🔙 Back", callback_data="back_to_dashboard")])
         
-        return keyboard
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
     
     @staticmethod
     def alert_options(alert_id: int, is_active: bool) -> InlineKeyboardMarkup:
         """Alert options keyboard."""
-        keyboard = InlineKeyboardMarkup()
+        buttons = []
         
         # Toggle status button
         status_text = "Disable" if is_active else "Enable"
         status_action = "disable" if is_active else "enable"
-        keyboard.add(InlineKeyboardButton(
-            f"{status_text} Alert", 
+        buttons.append([InlineKeyboardButton(
+            text=f"{status_text} Alert", 
             callback_data=f"{status_action}_alert:{alert_id}"
-        ))
+        )])
         
         # Remove button
-        keyboard.add(InlineKeyboardButton(
-            "🗑️ Remove Alert", 
+        buttons.append([InlineKeyboardButton(
+            text="🗑️ Remove Alert", 
             callback_data=f"remove_alert:{alert_id}"
-        ))
+        )])
         
         # Back button
-        keyboard.add(InlineKeyboardButton("🔙 Back", callback_data="my_alerts"))
+        buttons.append([InlineKeyboardButton(text="🔙 Back", callback_data="my_alerts")])
         
-        return keyboard
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
     
     @staticmethod
     def confirmation_keyboard(action: str, item_id: str) -> InlineKeyboardMarkup:
         """Confirmation keyboard."""
-        keyboard = InlineKeyboardMarkup()
+        buttons = [
+            [
+                InlineKeyboardButton(text="✅ Yes", callback_data=f"confirm_{action}:{item_id}"),
+                InlineKeyboardButton(text="❌ No", callback_data=f"cancel_{action}:{item_id}")
+            ]
+        ]
         
-        keyboard.row(
-            InlineKeyboardButton("✅ Yes", callback_data=f"confirm_{action}:{item_id}"),
-            InlineKeyboardButton("❌ No", callback_data=f"cancel_{action}:{item_id}")
-        )
-        
-        return keyboard 
+        return InlineKeyboardMarkup(inline_keyboard=buttons) 
