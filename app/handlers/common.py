@@ -20,11 +20,19 @@ async def cmd_start(message: Message):
     # Create or get user
     user = await UserService.get_or_create_user(user_id, username, first_name, last_name)
     
-    if user.is_blocked:
+    if not user:
+        await message.answer("An error occurred while processing your request. Please try again later.")
+        return
+    
+    is_blocked = user.is_blocked if hasattr(user, 'is_blocked') else False
+    is_approved = user.is_approved if hasattr(user, 'is_approved') else False
+    is_admin = user.is_admin if hasattr(user, 'is_admin') else False
+    
+    if is_blocked:
         await message.answer("You have been blocked from using this bot.")
         return
     
-    if not user.is_approved:
+    if not is_approved:
         await message.answer(
             "Thank you for registering! Your account is pending approval by an administrator. "
             "You will be notified once your account is approved."
@@ -34,7 +42,7 @@ async def cmd_start(message: Message):
         return
     
     # User is approved
-    keyboard = UserKeyboard.admin_menu() if user.is_admin else UserKeyboard.main_menu()
+    keyboard = UserKeyboard.admin_menu() if is_admin else UserKeyboard.main_menu()
     
     await message.answer(
         f"Welcome, {first_name or username or 'User'}! "
@@ -48,16 +56,25 @@ async def show_dashboard(message: Message):
     user_id = message.from_user.id
     user = await UserService.get_user(user_id)
     
-    if not user or user.is_blocked:
+    if not user:
+        await message.answer("An error occurred while processing your request. Please try again later.")
+        return
+    
+    is_blocked = user.is_blocked if hasattr(user, 'is_blocked') else False
+    is_approved = user.is_approved if hasattr(user, 'is_approved') else False
+    
+    if is_blocked:
         await message.answer("You don't have access to this bot.")
         return
     
-    if not user.is_approved:
+    if not is_approved:
         await message.answer("Your account is pending approval.")
         return
     
+    display_name = user.first_name or user.username or 'User'
+    
     await message.answer(
-        f"Welcome to your dashboard, {user.first_name or user.username or 'User'}!",
+        f"Welcome to your dashboard, {display_name}!",
         reply_markup=UserKeyboard.dashboard_menu()
     )
 

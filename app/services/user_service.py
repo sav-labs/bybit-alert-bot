@@ -10,6 +10,15 @@ class UserService:
         session = get_session()
         try:
             user = session.query(User).filter(User.user_id == user_id).first()
+            
+            if user:
+                _ = user.is_admin
+                _ = user.is_blocked
+                _ = user.is_approved
+                _ = user.username
+                _ = user.first_name
+                _ = user.last_name
+            
             return user
         except SQLAlchemyError as e:
             logger.error(f"Error getting user {user_id}: {e}")
@@ -22,7 +31,6 @@ class UserService:
         """Create a new user."""
         session = get_session()
         try:
-            # Check if user is admin
             is_admin = user_id in BOT_ADMINS
             is_approved = is_admin  # Admins are auto-approved
             
@@ -37,6 +45,14 @@ class UserService:
             
             session.add(user)
             session.commit()
+            
+            _ = user.is_admin
+            _ = user.is_blocked
+            _ = user.is_approved
+            _ = user.username
+            _ = user.first_name
+            _ = user.last_name
+            
             return user
         except SQLAlchemyError as e:
             session.rollback()
@@ -48,10 +64,40 @@ class UserService:
     @staticmethod
     async def get_or_create_user(user_id: int, username: str = None, first_name: str = None, last_name: str = None) -> User:
         """Get a user or create if not exists."""
-        user = await UserService.get_user(user_id)
-        if not user:
-            user = await UserService.create_user(user_id, username, first_name, last_name)
-        return user
+        session = get_session()
+        try:
+            user = session.query(User).filter(User.user_id == user_id).first()
+            
+            if not user:
+                is_admin = user_id in BOT_ADMINS
+                is_approved = is_admin  # Admins are auto-approved
+                
+                user = User(
+                    user_id=user_id,
+                    username=username,
+                    first_name=first_name,
+                    last_name=last_name,
+                    is_admin=is_admin,
+                    is_approved=is_approved
+                )
+                
+                session.add(user)
+                session.commit()
+            
+            _ = user.is_admin
+            _ = user.is_blocked
+            _ = user.is_approved
+            _ = user.username
+            _ = user.first_name
+            _ = user.last_name
+            
+            return user
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"Error getting or creating user {user_id}: {e}")
+            return None
+        finally:
+            session.close()
     
     @staticmethod
     async def approve_user(user_id: int) -> bool:
@@ -113,6 +159,15 @@ class UserService:
         session = get_session()
         try:
             users = session.query(User).all()
+            
+            for user in users:
+                _ = user.is_admin
+                _ = user.is_blocked
+                _ = user.is_approved
+                _ = user.username
+                _ = user.first_name
+                _ = user.last_name
+                
             return users
         except SQLAlchemyError as e:
             logger.error(f"Error getting all users: {e}")
@@ -126,6 +181,15 @@ class UserService:
         session = get_session()
         try:
             users = session.query(User).filter(User.is_approved == False, User.is_blocked == False).all()
+            
+            for user in users:
+                _ = user.is_admin
+                _ = user.is_blocked
+                _ = user.is_approved
+                _ = user.username
+                _ = user.first_name
+                _ = user.last_name
+                
             return users
         except SQLAlchemyError as e:
             logger.error(f"Error getting pending users: {e}")

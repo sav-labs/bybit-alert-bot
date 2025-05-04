@@ -11,6 +11,14 @@ class TokenAlertService:
         session = get_session()
         try:
             alerts = session.query(TokenAlert).filter(TokenAlert.user_id == user_id).all()
+            
+            # Загружаем необходимые атрибуты для каждого алерта
+            for alert in alerts:
+                _ = alert.symbol
+                _ = alert.price_multiplier 
+                _ = alert.is_active
+                _ = alert.last_alert_price
+            
             return alerts
         except SQLAlchemyError as e:
             logger.error(f"Error getting alerts for user {user_id}: {e}")
@@ -40,6 +48,13 @@ class TokenAlertService:
                 if not existing.is_active:
                     existing.is_active = True
                     session.commit()
+                
+                # Загружаем необходимые атрибуты
+                _ = existing.symbol
+                _ = existing.price_multiplier
+                _ = existing.is_active
+                _ = existing.last_alert_price
+                
                 return existing
             
             # Get current price
@@ -55,6 +70,14 @@ class TokenAlertService:
             
             session.add(alert)
             session.commit()
+            
+            # Загружаем необходимые атрибуты
+            _ = alert.id
+            _ = alert.symbol
+            _ = alert.price_multiplier
+            _ = alert.is_active
+            _ = alert.last_alert_price
+            
             return alert
         except SQLAlchemyError as e:
             session.rollback()
@@ -139,6 +162,13 @@ class TokenAlertService:
         try:
             # Get all active alerts
             active_alerts = session.query(TokenAlert).filter(TokenAlert.is_active == True).all()
+            
+            # Загружаем необходимые атрибуты для каждого алерта
+            for alert in active_alerts:
+                _ = alert.symbol
+                _ = alert.price_multiplier
+                _ = alert.last_alert_price
+                _ = alert.user_id
             
             # Group alerts by symbol to minimize API calls
             symbols = set(alert.symbol for alert in active_alerts)

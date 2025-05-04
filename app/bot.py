@@ -6,7 +6,6 @@ from loguru import logger
 
 from app.settings import BOT_TOKEN
 from app.handlers import routers
-from app.utils import setup_logger
 from app.db import init_db
 from app.services.token_alert_service import TokenAlertService
 
@@ -53,12 +52,13 @@ async def alert_worker():
 
 async def main():
     """Main bot function."""
-    # Setup logger
-    setup_logger()
-    
     # Initialize database
-    init_db()
-    logger.info("Database initialized")
+    try:
+        init_db()
+        logger.info("Database initialized")
+    except Exception as e:
+        logger.error(f"Database initialization error: {e}")
+        return
     
     # Create dispatcher
     dp = Dispatcher(storage=MemoryStorage())
@@ -77,6 +77,8 @@ async def main():
 
 if __name__ == "__main__":
     try:
+        # Запуск через main.py рекомендуется
+        logger.warning("Direct execution of bot.py is not recommended. Use 'python main.py' instead.")
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logger.info("Bot stopped")
