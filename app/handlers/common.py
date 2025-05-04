@@ -118,8 +118,8 @@ async def notify_admins_about_new_user(user_id: int, username: str):
         except Exception as e:
             logger.error(f"Failed to notify admin {admin_id}: {e}")
 
-@router.message(lambda message: not TOKEN_PATTERN.match(message.text.strip().upper()))
+@router.message(lambda message: not TOKEN_PATTERN.match(message.text.strip().upper()) and message.text.strip() not in ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"])
 async def echo(message: Message):
     """Echo all messages that didn't match other handlers and aren't potential tokens."""
-    # Проверяем, что сообщение не похоже на тикер, прежде чем отвечать
+    # Проверяем, что сообщение не похоже на тикер и не является командой меню, прежде чем отвечать
     await message.answer("I don't understand this command. Please use the menu buttons.") 

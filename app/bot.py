@@ -23,13 +23,17 @@ async def alert_worker():
             for item in alerts_to_send:
                 alert = item["alert"]
                 current_price = item["current_price"]
+                last_price = alert.last_alert_price
+                
+                # Определяем направление движения цены
+                direction_emoji = "🔼" if current_price > last_price else "🔽"
+                change_text = "increased" if current_price > last_price else "decreased"
                 
                 # Format message
                 message = (
                     f"🔔 *Price Alert for {alert.symbol}*\n\n"
-                    f"Current price: *${current_price:,.2f}*\n"
-                    f"Threshold: *${alert.price_multiplier:g}*\n\n"
-                    f"The price has crossed a ${alert.price_multiplier:g} threshold!"
+                    f"{direction_emoji} Price has {change_text} to *${current_price:,.2f}*\n"
+                    f"Price crossed threshold: *${alert.price_multiplier:g}*"
                 )
                 
                 try:
