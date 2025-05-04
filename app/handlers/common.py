@@ -6,8 +6,12 @@ from aiogram.fsm.context import FSMContext
 from app.services import UserService
 from app.keyboards import UserKeyboard, AdminKeyboard
 from loguru import logger
+import re
 
 router = Router()
+
+# Регулярное выражение для проверки, является ли сообщение возможным токеном
+TOKEN_PATTERN = re.compile(r'^[A-Z0-9]{2,10}$')
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
@@ -114,7 +118,8 @@ async def notify_admins_about_new_user(user_id: int, username: str):
         except Exception as e:
             logger.error(f"Failed to notify admin {admin_id}: {e}")
 
-@router.message()
+@router.message(lambda message: not TOKEN_PATTERN.match(message.text.strip().upper()))
 async def echo(message: Message):
-    """Echo all messages that didn't match other handlers."""
+    """Echo all messages that didn't match other handlers and aren't potential tokens."""
+    # Проверяем, что сообщение не похоже на тикер, прежде чем отвечать
     await message.answer("I don't understand this command. Please use the menu buttons.") 

@@ -7,8 +7,12 @@ from aiogram.fsm.state import State, StatesGroup
 from app.services import UserService, TokenAlertService, BybitService
 from app.keyboards import UserKeyboard
 from loguru import logger
+import re
 
 router = Router()
+
+# Регулярное выражение для проверки, похоже ли сообщение на тикер криптовалюты
+TOKEN_PATTERN = re.compile(r'^[A-Z0-9]{2,10}$')
 
 class AddAlertStates(StatesGroup):
     waiting_for_symbol = State()
@@ -94,6 +98,41 @@ async def process_symbol_input(message: Message, state: FSMContext):
     
     # Clear state
     await state.clear()
+
+# Добавим обработчик для проверки, является ли сообщение токеном
+@router.message(lambda message: TOKEN_PATTERN.match(message.text.strip().upper()))
+async def check_token_message(message: Message, state: FSMContext):
+    """Check if a message might be a token and validate it."""
+    # Пропускаем сообщения, которые совпадают с командами меню
+    menu_commands = ["My Dashboard", "User Management", "Support"]
+    if message.text.strip() in menu_commands:
+        return
+    
+    current_state = await state.get_state()
+    # Если уже в режиме ожидания токена, не обрабатываем
+    if current_state in [AddAlertStates.waiting_for_symbol.state, AddAlertStates.waiting_for_custom_token.state]:
+        return
+    
+    symbol = message.text.strip().upper()
+    user_id = message.from_user.id
+    user = await UserService.get_user(user_id)
+    
+    if not user or user.is_blocked or not user.is_approved:
+        return
+    
+    # Проверяем, существует ли токен
+    is_valid = await BybitService.is_token_valid(symbol)
+    
+    if is_valid:
+        await message.answer(
+            f"Token {symbol} found! Now select the price change threshold you want to monitor:",
+            reply_markup=UserKeyboard.price_multiplier_select(symbol)
+        )
+    else:
+        await message.answer(
+            f"Token {symbol} not found on Bybit. Please check the symbol or select from the list of available tokens.",
+            reply_markup=UserKeyboard.dashboard_menu()
+        )
 
 @router.callback_query(F.data.startswith("set_multiplier:"))
 async def set_price_multiplier(callback: CallbackQuery):
