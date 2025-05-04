@@ -104,7 +104,7 @@ async def process_symbol_input(message: Message, state: FSMContext):
 async def check_token_message(message: Message, state: FSMContext):
     """Check if a message might be a token and validate it."""
     # Пропускаем сообщения, которые совпадают с командами меню
-    menu_commands = ["My Dashboard", "User Management", "Support"]
+    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
     if message.text.strip() in menu_commands:
         return
     
