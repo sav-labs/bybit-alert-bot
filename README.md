@@ -22,7 +22,7 @@ A Telegram bot that monitors cryptocurrency prices on Bybit and sends alerts whe
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/bybit-alert-bot.git
+git clone https://github.com/sav-labs/bybit-alert-bot.git
 cd bybit-alert-bot
 ```
 
