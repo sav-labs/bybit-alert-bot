@@ -5,19 +5,21 @@ class UserKeyboard:
     @staticmethod
     def main_menu() -> ReplyKeyboardMarkup:
         """Main menu keyboard."""
-        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-        keyboard.add(KeyboardButton("🏠 My Dashboard"))
-        keyboard.add(KeyboardButton("📞 Support"))
-        return keyboard
+        keyboard = [
+            [KeyboardButton(text="🏠 My Dashboard")],
+            [KeyboardButton(text="📞 Support")]
+        ]
+        return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
     
     @staticmethod
     def admin_menu() -> ReplyKeyboardMarkup:
         """Admin menu keyboard."""
-        keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-        keyboard.add(KeyboardButton("🏠 My Dashboard"))
-        keyboard.add(KeyboardButton("👥 User Management"))
-        keyboard.add(KeyboardButton("📞 Support"))
-        return keyboard
+        keyboard = [
+            [KeyboardButton(text="🏠 My Dashboard")],
+            [KeyboardButton(text="👥 User Management")],
+            [KeyboardButton(text="📞 Support")]
+        ]
+        return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
     
     @staticmethod
     def dashboard_menu() -> InlineKeyboardMarkup:
