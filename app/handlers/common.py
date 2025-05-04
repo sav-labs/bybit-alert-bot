@@ -50,7 +50,7 @@ async def cmd_start(message: Message):
         reply_markup=keyboard
     )
 
-@router.message(F.text == "🏠 My Dashboard")
+@router.message(F.text.in_(["🏠 My Dashboard", "My Dashboard"]))
 async def show_dashboard(message: Message):
     """Show user dashboard."""
     user_id = message.from_user.id
@@ -78,7 +78,7 @@ async def show_dashboard(message: Message):
         reply_markup=UserKeyboard.dashboard_menu()
     )
 
-@router.message(F.text == "📞 Support")
+@router.message(F.text.in_(["📞 Support", "Support"]))
 async def show_support(message: Message):
     """Show support contact."""
     await message.answer(

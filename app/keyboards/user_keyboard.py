@@ -36,6 +36,9 @@ class UserKeyboard:
         """List of tokens keyboard."""
         buttons = []
         
+        # Add button for manual token input
+        buttons.append([InlineKeyboardButton(text="✏️ Enter Custom Token", callback_data="enter_custom_token")])
+        
         # Calculate pagination
         total_pages = (len(tokens) + page_size - 1) // page_size
         start = page * page_size

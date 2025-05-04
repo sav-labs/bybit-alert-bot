@@ -12,6 +12,7 @@ router = Router()
 
 class AddAlertStates(StatesGroup):
     waiting_for_symbol = State()
+    waiting_for_custom_token = State()
 
 @router.callback_query(F.data == "add_alert")
 async def add_alert_start(callback: CallbackQuery, state: FSMContext):
@@ -28,6 +29,48 @@ async def add_alert_start(callback: CallbackQuery, state: FSMContext):
     )
     await state.set_state(AddAlertStates.waiting_for_symbol)
     await callback.answer()
+
+@router.callback_query(F.data == "enter_custom_token")
+async def enter_custom_token(callback: CallbackQuery, state: FSMContext):
+    """Handle custom token input."""
+    user_id = callback.from_user.id
+    user = await UserService.get_user(user_id)
+    
+    if not user or user.is_blocked or not user.is_approved:
+        await callback.answer("You don't have permission to add alerts.")
+        return
+    
+    await callback.message.edit_text(
+        "Please enter the token symbol you want to track (e.g. BTC, ETH, SOL, TRUMP):"
+    )
+    await state.set_state(AddAlertStates.waiting_for_custom_token)
+    await callback.answer()
+
+@router.message(AddAlertStates.waiting_for_custom_token)
+async def process_custom_token_input(message: Message, state: FSMContext):
+    """Process custom token input from user."""
+    symbol = message.text.strip().upper()
+    
+    # Check if token exists
+    is_valid = await BybitService.is_token_valid(symbol)
+    
+    if not is_valid:
+        await message.answer(
+            f"Token {symbol} not found on Bybit. Please check the symbol and try again. "
+            f"You can try another custom token or go back to the token list.",
+            reply_markup=UserKeyboard.dashboard_menu()
+        )
+        await state.clear()
+        return
+    
+    # Token exists, show price multiplier selection
+    await message.answer(
+        f"Token {symbol} found! Now select the price change threshold you want to monitor:",
+        reply_markup=UserKeyboard.price_multiplier_select(symbol)
+    )
+    
+    # Clear state
+    await state.clear()
 
 @router.message(AddAlertStates.waiting_for_symbol)
 async def process_symbol_input(message: Message, state: FSMContext):

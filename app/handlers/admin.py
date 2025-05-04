@@ -8,7 +8,7 @@ from loguru import logger
 
 router = Router()
 
-@router.message(F.text == "👥 User Management")
+@router.message(F.text.in_(["👥 User Management", "User Management"]))
 async def show_user_management(message: Message):
     """Show user management options for admin."""
     user_id = message.from_user.id
