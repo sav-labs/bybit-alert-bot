@@ -43,4 +43,9 @@ def get_session():
     Base.metadata.create_all(engine)
     # Create session
     Session = sessionmaker(bind=engine)
-    return Session() 
+    return Session()
+
+def init_db():
+    """Initialize the database and create all tables."""
+    Base.metadata.create_all(engine)
+    return True 

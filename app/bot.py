@@ -2,15 +2,14 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 import logging
+import sys
 from loguru import logger
 
 from app.settings import BOT_TOKEN, BOT_ADMINS, POLLING_INTERVAL
 from app.handlers import routers
-from app.db import init_db, get_session, Base, engine
+from app.db import get_session, Base, engine, init_db
 from app.services.token_alert_service import TokenAlertService
-from app.migrate import migrate_add_last_alert_time, apply_migrations
-from app.states import wait_for_token_step
-from app.keyboards import get_main_keyboard, get_alert_keyboard, get_dashboard_keyboard
+from app.migrate import migrate_add_last_alert_time
 
 # Global bot instance for access from other modules
 bot = Bot(token=BOT_TOKEN)
