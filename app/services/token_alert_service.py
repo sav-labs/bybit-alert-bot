@@ -4,6 +4,7 @@ from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 import math
 import time
+from app.settings import POLLING_INTERVAL
 
 class TokenAlertService:
     @staticmethod
@@ -67,7 +68,7 @@ class TokenAlertService:
                 symbol=symbol,
                 price_multiplier=price_multiplier,
                 last_alert_price=current_price,
-                last_alert_time=time.time() - 5  # Смещение на 5 секунд назад
+                last_alert_time=time.time() - POLLING_INTERVAL  # Смещение на POLLING_INTERVAL
             )
             
             session.add(alert)
@@ -182,12 +183,12 @@ class TokenAlertService:
                 try:
                     last_time = alert.last_alert_time
                     if last_time is None or last_time <= 0:
-                        # Используем текущее время минус 5 секунд (чтобы избежать "just now")
-                        alert.last_alert_time = current_time - 5
+                        # Используем текущее время минус POLLING_INTERVAL
+                        alert.last_alert_time = current_time - POLLING_INTERVAL
                         logger.warning(f"Fixed missing last_alert_time for alert ID {alert.id} ({alert.symbol})")
                 except AttributeError:
-                    # Используем текущее время минус 5 секунд
-                    alert.last_alert_time = current_time - 5
+                    # Используем текущее время минус POLLING_INTERVAL
+                    alert.last_alert_time = current_time - POLLING_INTERVAL
                     logger.warning(f"Added missing last_alert_time attribute for alert ID {alert.id} ({alert.symbol})")
             
             # Выполняем коммит, если были исправления
@@ -296,7 +297,7 @@ class TokenAlertService:
                 if current_price:
                     alert.last_alert_price = current_price
                     # Обновляем время последнего алерта (с небольшим смещением)
-                    alert.last_alert_time = time.time() - 5
+                    alert.last_alert_time = time.time() - POLLING_INTERVAL
                 
                 session.commit()
                 return True

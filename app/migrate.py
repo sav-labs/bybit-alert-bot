@@ -1,7 +1,7 @@
 import time
 import sqlite3
 from loguru import logger
-from app.settings import DATABASE_URL
+from app.settings import DATABASE_URL, POLLING_INTERVAL
 
 def migrate_add_last_alert_time():
     """Add last_alert_time column to token_alerts table if it doesn't exist and fixes any null values."""
@@ -19,8 +19,8 @@ def migrate_add_last_alert_time():
         column_names = [col[1] for col in columns]
         
         current_time = time.time()
-        # Устанавливаем время на 5 секунд назад для существующих записей (чтобы избежать "just now")
-        past_time = current_time - 5
+        # Устанавливаем время на POLLING_INTERVAL секунд назад для существующих записей
+        past_time = current_time - POLLING_INTERVAL
         
         if 'last_alert_time' not in column_names:
             # Add column with default value of one hour ago

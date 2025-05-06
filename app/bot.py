@@ -20,7 +20,7 @@ def format_time_interval(seconds):
     if seconds < 0:
         return "N/A"
     elif seconds < 1:
-        return "just now"
+        return f"{int(seconds * 1000)}ms"  # Показываем миллисекунды для очень коротких интервалов
     
     hours, remainder = divmod(int(seconds), 3600)
     minutes, seconds = divmod(remainder, 60)

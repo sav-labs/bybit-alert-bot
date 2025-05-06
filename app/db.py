@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, Column, String, Integer, Float, Boolean, F
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
-from app.settings import DATABASE_URL
+from app.settings import DATABASE_URL, POLLING_INTERVAL
 import time
 import inspect
 import os
@@ -36,7 +36,7 @@ class TokenAlert(Base):
     symbol = Column(String, nullable=False)
     price_multiplier = Column(Float, nullable=False)
     last_alert_price = Column(Float)
-    last_alert_time = Column(Float, default=lambda: time.time() - 5)
+    last_alert_time = Column(Float, default=lambda: time.time() - POLLING_INTERVAL)
     is_active = Column(Boolean, default=True)
     created_at = Column(Float, default=time.time)
 
