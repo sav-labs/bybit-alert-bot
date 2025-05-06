@@ -66,7 +66,8 @@ class TokenAlertService:
                 user_id=user_id,
                 symbol=symbol,
                 price_multiplier=price_multiplier,
-                last_alert_price=current_price
+                last_alert_price=current_price,
+                last_alert_time=time.time()  # Явно устанавливаем текущее время
             )
             
             session.add(alert)
@@ -205,17 +206,27 @@ class TokenAlertService:
                 if TokenAlertService.should_alert(current_price, previous_price, alert.price_multiplier):
                     logger.debug(f"Alert condition triggered for {alert.symbol}: price change (${price_diff:,.2f}) >= step (${alert.price_multiplier:g})")
                     
-                    # Получаем время последнего алерта (или текущее, если это первый алерт)
-                    last_alert_time = getattr(alert, 'last_alert_time', None)
-                    time_passed = current_time - last_alert_time if last_alert_time else 0
+                    # Получаем время последнего алерта и вычисляем прошедшее время
+                    last_alert_time = alert.last_alert_time
+                    
+                    # Если last_alert_time не определено (что не должно происходить)
+                    if last_alert_time is None:
+                        logger.warning(f"Alert {alert.id} for {alert.symbol} has no last_alert_time, initializing with current time")
+                        time_passed = 0
+                    else:
+                        time_passed = current_time - last_alert_time
+                    
+                    if time_passed < 0:
+                        logger.warning(f"Negative time passed for alert {alert.id}: {time_passed}s, resetting to 0")
+                        time_passed = 0
                     
                     logger.debug(f"Time since last alert for {alert.symbol}: {time_passed:.1f}s (last alert time: {last_alert_time})")
                     
                     alerts_to_send.append({
                         "alert": alert,
                         "current_price": current_price,
-                        "previous_price": previous_price,  # Добавляем предыдущую цену в результат
-                        "time_passed": time_passed  # Добавляем прошедшее время в секундах
+                        "previous_price": previous_price,
+                        "time_passed": time_passed
                     })
                     
                     # Update last alert price and time
@@ -254,6 +265,8 @@ class TokenAlertService:
                 # Обновляем last_alert_price, чтобы расчет начался с новой точки
                 if current_price:
                     alert.last_alert_price = current_price
+                    # Обновляем время последнего алерта
+                    alert.last_alert_time = time.time()
                 
                 session.commit()
                 return True
