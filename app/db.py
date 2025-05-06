@@ -36,7 +36,7 @@ class TokenAlert(Base):
     symbol = Column(String, nullable=False)
     price_multiplier = Column(Float, nullable=False)
     last_alert_price = Column(Float)
-    last_alert_time = Column(Float, default=time.time)
+    last_alert_time = Column(Float, default=lambda: time.time() - 5)
     is_active = Column(Boolean, default=True)
     created_at = Column(Float, default=time.time)
 

@@ -19,8 +19,8 @@ def migrate_add_last_alert_time():
         column_names = [col[1] for col in columns]
         
         current_time = time.time()
-        # Устанавливаем время на 1 час назад для существующих записей
-        past_time = current_time - 3600
+        # Устанавливаем время на 5 секунд назад для существующих записей (чтобы избежать "just now")
+        past_time = current_time - 5
         
         if 'last_alert_time' not in column_names:
             # Add column with default value of one hour ago

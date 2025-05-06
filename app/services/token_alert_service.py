@@ -67,7 +67,7 @@ class TokenAlertService:
                 symbol=symbol,
                 price_multiplier=price_multiplier,
                 last_alert_price=current_price,
-                last_alert_time=time.time()  # Явно устанавливаем текущее время
+                last_alert_time=time.time() - 5  # Смещение на 5 секунд назад
             )
             
             session.add(alert)
@@ -182,10 +182,12 @@ class TokenAlertService:
                 try:
                     last_time = alert.last_alert_time
                     if last_time is None or last_time <= 0:
-                        alert.last_alert_time = current_time - 3600  # Устанавливаем время на час назад для первого алерта
+                        # Используем текущее время минус 5 секунд (чтобы избежать "just now")
+                        alert.last_alert_time = current_time - 5
                         logger.warning(f"Fixed missing last_alert_time for alert ID {alert.id} ({alert.symbol})")
                 except AttributeError:
-                    alert.last_alert_time = current_time - 3600  # Устанавливаем время на час назад для первого алерта
+                    # Используем текущее время минус 5 секунд
+                    alert.last_alert_time = current_time - 5
                     logger.warning(f"Added missing last_alert_time attribute for alert ID {alert.id} ({alert.symbol})")
             
             # Выполняем коммит, если были исправления
@@ -293,8 +295,8 @@ class TokenAlertService:
                 # Обновляем last_alert_price, чтобы расчет начался с новой точки
                 if current_price:
                     alert.last_alert_price = current_price
-                    # Обновляем время последнего алерта
-                    alert.last_alert_time = time.time()
+                    # Обновляем время последнего алерта (с небольшим смещением)
+                    alert.last_alert_time = time.time() - 5
                 
                 session.commit()
                 return True
