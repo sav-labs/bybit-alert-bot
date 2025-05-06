@@ -23,30 +23,47 @@ async def alert_worker():
             for item in alerts_to_send:
                 alert = item["alert"]
                 current_price = item["current_price"]
-                last_price = alert.last_alert_price
+                last_price = item["previous_price"]  # Получаем предыдущую цену из результата
                 
                 # Рассчитываем изменение цены
                 price_diff = current_price - last_price
                 price_diff_percent = (price_diff / last_price) * 100 if last_price else 0
                 
                 # Определяем направление движения цены
-                is_price_up = current_price > last_price
+                is_price_up = price_diff > 0  # Используем price_diff напрямую для определения направления
                 direction_emoji = "📈" if is_price_up else "📉"
                 
                 # Форматируем значение изменения, гарантируя отображение даже маленьких изменений
-                # Для изменений, меньших 0.01, используем научную нотацию
-                if abs(price_diff) < 0.01:
-                    diff_formatted = f"+${price_diff:.8f}" if is_price_up else f"-${abs(price_diff):.8f}"
-                else:
-                    diff_formatted = f"+${abs(price_diff):,.2f}" if is_price_up else f"-${abs(price_diff):,.2f}"
+                sign = "+" if is_price_up else "-"
+                abs_diff = abs(price_diff)
+                abs_percent = abs(price_diff_percent)
                 
-                # Точность для процентов зависит от величины изменения
-                if abs(price_diff_percent) < 0.0001:
-                    percent_formatted = f"+{price_diff_percent:.8f}%" if is_price_up else f"-{abs(price_diff_percent):.8f}%"
-                elif abs(price_diff_percent) < 0.01:
-                    percent_formatted = f"+{price_diff_percent:.6f}%" if is_price_up else f"-{abs(price_diff_percent):.6f}%"
+                # Используем разные форматы в зависимости от величины изменения
+                if abs_diff < 0.0001:
+                    diff_formatted = f"{sign}${abs_diff:.10f}"
+                elif abs_diff < 0.01:
+                    diff_formatted = f"{sign}${abs_diff:.6f}"
                 else:
-                    percent_formatted = f"+{price_diff_percent:.4f}%" if is_price_up else f"-{abs(price_diff_percent):.4f}%"
+                    diff_formatted = f"{sign}${abs_diff:,.2f}"
+                
+                # Форматирование процентов
+                if abs_percent < 0.0001:
+                    percent_formatted = f"{sign}{abs_percent:.10f}%"
+                elif abs_percent < 0.01:
+                    percent_formatted = f"{sign}{abs_percent:.6f}%"
+                else:
+                    percent_formatted = f"{sign}{abs_percent:.4f}%"
+                
+                # Проверка и принудительная коррекция при очень маленьких значениях
+                # Если разница меньше чем 0.000001, показываем фактическую разницу без округления
+                if abs_diff < 0.000001:
+                    diff_formatted = f"{sign}${price_diff:e}"  # Используем научную нотацию
+                if abs_percent < 0.000001:
+                    percent_formatted = f"{sign}{price_diff_percent:e}%"  # Научная нотация для процентов
+                
+                # Логирование для отладки
+                logger.debug(f"Price change: from {last_price} to {current_price} = {price_diff}")
+                logger.debug(f"Formatted: {diff_formatted} ({percent_formatted})")
                 
                 # Format message
                 message = (

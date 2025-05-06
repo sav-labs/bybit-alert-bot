@@ -185,11 +185,13 @@ class TokenAlertService:
                     continue
                 
                 current_price = prices[alert.symbol]
+                previous_price = alert.last_alert_price  # Запоминаем предыдущую цену
                 
-                if TokenAlertService.should_alert(current_price, alert.last_alert_price, alert.price_multiplier):
+                if TokenAlertService.should_alert(current_price, previous_price, alert.price_multiplier):
                     alerts_to_send.append({
                         "alert": alert,
-                        "current_price": current_price
+                        "current_price": current_price,
+                        "previous_price": previous_price  # Добавляем предыдущую цену в результат
                     })
                     
                     # Update last alert price
