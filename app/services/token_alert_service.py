@@ -3,6 +3,7 @@ from app.services.bybit_service import BybitService
 from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 import math
+import time
 
 class TokenAlertService:
     @staticmethod
@@ -157,6 +158,7 @@ class TokenAlertService:
         """Check all active alerts for price changes that trigger notifications."""
         session = get_session()
         alerts_to_send = []
+        current_time = time.time()  # Текущее время в секундах
         
         try:
             # Get all active alerts
@@ -202,14 +204,21 @@ class TokenAlertService:
                 
                 if TokenAlertService.should_alert(current_price, previous_price, alert.price_multiplier):
                     logger.debug(f"Alert condition triggered for {alert.symbol}: price change (${price_diff:,.2f}) >= step (${alert.price_multiplier:g})")
+                    
+                    # Получаем время последнего алерта (или текущее, если это первый алерт)
+                    last_alert_time = getattr(alert, 'last_alert_time', None) or current_time
+                    time_passed = current_time - last_alert_time
+                    
                     alerts_to_send.append({
                         "alert": alert,
                         "current_price": current_price,
-                        "previous_price": previous_price  # Добавляем предыдущую цену в результат
+                        "previous_price": previous_price,  # Добавляем предыдущую цену в результат
+                        "time_passed": time_passed  # Добавляем прошедшее время в секундах
                     })
                     
-                    # Update last alert price
+                    # Update last alert price and time
                     alert.last_alert_price = current_price
+                    alert.last_alert_time = current_time
             
             session.commit()
             

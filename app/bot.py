@@ -8,6 +8,7 @@ from app.settings import BOT_TOKEN
 from app.handlers import routers
 from app.db import init_db
 from app.services.token_alert_service import TokenAlertService
+from app.migrate import migrate_add_last_alert_time
 
 # Global bot instance for access from other modules
 bot = Bot(token=BOT_TOKEN)
@@ -24,6 +25,18 @@ async def alert_worker():
                 alert = item["alert"]
                 current_price = item["current_price"]
                 last_price = item["previous_price"]  # Получаем предыдущую цену из результата
+                time_passed = item.get("time_passed", 0)  # Получаем время в секундах с предыдущего алерта
+                
+                # Форматируем прошедшее время
+                hours, remainder = divmod(int(time_passed), 3600)
+                minutes, seconds = divmod(remainder, 60)
+                
+                if hours > 0:
+                    time_str = f"{hours}h {minutes}m {seconds}s"
+                elif minutes > 0:
+                    time_str = f"{minutes}m {seconds}s"
+                else:
+                    time_str = f"{seconds}s"
                 
                 # Рассчитываем изменение цены
                 price_diff = current_price - last_price
@@ -31,7 +44,7 @@ async def alert_worker():
                 
                 # Определяем направление движения цены
                 is_price_up = price_diff > 0  # Используем price_diff напрямую для определения направления
-                direction_emoji = "📈" if is_price_up else "📉"
+                direction_emoji = "🟢" if is_price_up else "🔴"
                 
                 # Форматируем значение изменения, гарантируя отображение даже маленьких изменений
                 sign = "+" if is_price_up else "-"
@@ -67,9 +80,10 @@ async def alert_worker():
                 
                 # Format message
                 message = (
-                    f"*{alert.symbol}*\n"
+                    f"⚡️ *{alert.symbol}* ⚡️\n"
                     f"{direction_emoji} *${current_price:,.2f}*\n"
                     f"Change: *{diff_formatted}* ({percent_formatted})\n"
+                    f"Time since last alert: *{time_str}*\n"
                     f"Alert step: *${alert.price_multiplier:g}*"
                 )
                 
@@ -98,6 +112,13 @@ async def main():
     try:
         init_db()
         logger.info("Database initialized")
+        
+        # Запускаем миграцию для добавления поля last_alert_time
+        migrate_result = migrate_add_last_alert_time()
+        if migrate_result:
+            logger.info("Database migration completed")
+        else:
+            logger.warning("Database migration failed or was not needed")
     except Exception as e:
         logger.error(f"Database initialization error: {e}")
         return
