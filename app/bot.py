@@ -5,38 +5,14 @@ import logging
 import sys
 from loguru import logger
 
+# Импортируем необходимые зависимости
 from app.settings import BOT_TOKEN, BOT_ADMINS, POLLING_INTERVAL
 from app.handlers import routers
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 from app.services.token_alert_service import TokenAlertService
 from app.migrate import migrate_add_last_alert_time
 
-# Импортируем БД напрямую, без ссылки на модуль db
-from app.settings import DATABASE_URL
-import os
-
-# Создаем директории для БД, если их нет
-os.makedirs(os.path.dirname(DATABASE_URL.replace('sqlite:///', '')), exist_ok=True)
-
-# Создаем движок и базовый класс
-engine = create_engine(DATABASE_URL)
-Base = declarative_base()
-
 # Global bot instance for access from other modules
 bot = Bot(token=BOT_TOKEN)
-
-def get_session():
-    """Создает новую сессию для работы с БД."""
-    Session = sessionmaker(bind=engine)
-    return Session()
-
-def init_db():
-    """Инициализирует БД и создает таблицы."""
-    from app.db import User, TokenAlert  # Импортируем модели
-    Base.metadata.create_all(engine)
-    return True
 
 # Функция для форматирования временных интервалов
 def format_time_interval(seconds):
@@ -99,30 +75,29 @@ async def alert_worker():
             logger.error(f"Error in alert worker: {e}")
         
         # Ждем перед следующей проверкой
-        await asyncio.sleep(POLLING_INTERVAL)  
+        await asyncio.sleep(POLLING_INTERVAL)
         logger.debug(f"Alert worker checked prices after {POLLING_INTERVAL}s interval")
 
 async def main():
-    """Main bot function."""
-    # Initialize database
-    try:
-        init_db()
-        logger.info("Database initialized")
-        
-        # Запускаем миграцию для добавления поля last_alert_time
-        migrate_result = migrate_add_last_alert_time()
-        if migrate_result:
-            logger.info("Database migration completed")
-        else:
-            logger.warning("Database migration failed or was not needed")
-    except Exception as e:
-        logger.error(f"Database initialization error: {e}")
-        return
+    """Main function to start the bot."""
+    # Configure logger
+    from app.utils.logger import setup_logger
+    setup_logger()
+    logger.info("Starting Bybit Alert Bot")
     
-    # Create dispatcher
+    # Initialize database from app.db module
+    from app.db import init_db
+    init_db()
+    logger.info("Database initialized")
+    
+    # Apply migrations
+    success = migrate_add_last_alert_time()
+    logger.info("Database migration completed")
+    
+    # Initialize Dispatcher with memory storage
     dp = Dispatcher(storage=MemoryStorage())
     
-    # Register all routers
+    # Include all routers
     for router in routers:
         dp.include_router(router)
     
@@ -135,12 +110,4 @@ async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    try:
-        # Запуск через main.py рекомендуется
-        logger.warning("Direct execution of bot.py is not recommended. Use 'python main.py' instead.")
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("Bot stopped")
-    except Exception as e:
-        logger.error(f"Unhandled exception: {e}")
-        sys.exit(1) 
+    asyncio.run(main()) 
