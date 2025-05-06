@@ -33,9 +33,20 @@ async def alert_worker():
                 is_price_up = current_price > last_price
                 direction_emoji = "📈" if is_price_up else "📉"
                 
-                # Форматируем значение изменения с учетом малых процентов
-                diff_formatted = f"+${abs(price_diff):,.2f}" if is_price_up else f"-${abs(price_diff):,.2f}"
-                percent_formatted = f"+{abs(price_diff_percent):.4f}%" if is_price_up else f"-{abs(price_diff_percent):.4f}%"
+                # Форматируем значение изменения, гарантируя отображение даже маленьких изменений
+                # Для изменений, меньших 0.01, используем научную нотацию
+                if abs(price_diff) < 0.01:
+                    diff_formatted = f"+${price_diff:.8f}" if is_price_up else f"-${abs(price_diff):.8f}"
+                else:
+                    diff_formatted = f"+${abs(price_diff):,.2f}" if is_price_up else f"-${abs(price_diff):,.2f}"
+                
+                # Точность для процентов зависит от величины изменения
+                if abs(price_diff_percent) < 0.0001:
+                    percent_formatted = f"+{price_diff_percent:.8f}%" if is_price_up else f"-{abs(price_diff_percent):.8f}%"
+                elif abs(price_diff_percent) < 0.01:
+                    percent_formatted = f"+{price_diff_percent:.6f}%" if is_price_up else f"-{abs(price_diff_percent):.6f}%"
+                else:
+                    percent_formatted = f"+{price_diff_percent:.4f}%" if is_price_up else f"-{abs(price_diff_percent):.4f}%"
                 
                 # Format message
                 message = (
