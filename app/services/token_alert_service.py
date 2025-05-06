@@ -177,6 +177,19 @@ class TokenAlertService:
                 _ = alert.price_multiplier
                 _ = alert.last_alert_price
                 _ = alert.user_id
+                
+                # Проверяем, что last_alert_time установлен
+                try:
+                    last_time = alert.last_alert_time
+                    if last_time is None:
+                        alert.last_alert_time = current_time
+                        logger.warning(f"Fixed missing last_alert_time for alert ID {alert.id} ({alert.symbol})")
+                except AttributeError:
+                    alert.last_alert_time = current_time
+                    logger.warning(f"Added missing last_alert_time attribute for alert ID {alert.id} ({alert.symbol})")
+            
+            # Выполняем коммит, если были исправления
+            session.commit()
             
             # Group alerts by symbol to minimize API calls
             symbols = set(alert.symbol for alert in active_alerts)
@@ -209,8 +222,10 @@ class TokenAlertService:
                     # Проверяем наличие атрибута last_alert_time и создаем его при необходимости
                     try:
                         last_alert_time = alert.last_alert_time
+                        logger.debug(f"Alert {alert.id} has last_alert_time: {last_alert_time}")
                         if last_alert_time is None:
                             logger.warning(f"Alert {alert.id} for {alert.symbol} has None last_alert_time, initializing with current time")
+                            alert.last_alert_time = current_time
                             last_alert_time = current_time
                     except AttributeError:
                         logger.warning(f"Alert {alert.id} for {alert.symbol} missing last_alert_time attribute, initializing")
@@ -225,7 +240,7 @@ class TokenAlertService:
                         logger.warning(f"Negative time passed for alert {alert.id}: {time_passed}s, resetting to 0")
                         time_passed = 0
                     
-                    logger.debug(f"Time since last alert for {alert.symbol}: {time_passed:.1f}s (last alert time: {last_alert_time})")
+                    logger.debug(f"Time since last alert for {alert.symbol}: {time_passed:.1f}s (last alert time: {last_alert_time}, current time: {current_time})")
                     
                     alerts_to_send.append({
                         "alert": alert,
@@ -237,8 +252,11 @@ class TokenAlertService:
                     # Update last alert price and time
                     alert.last_alert_price = current_price
                     alert.last_alert_time = current_time
+                    logger.debug(f"Updated last_alert_time for {alert.symbol} to {current_time}")
             
+            # Выполняем явный коммит для сохранения изменений
             session.commit()
+            logger.debug(f"Committed changes for {len(active_alerts)} alerts")
             
             if alerts_to_send:
                 logger.debug(f"Found {len(alerts_to_send)} alerts to send")

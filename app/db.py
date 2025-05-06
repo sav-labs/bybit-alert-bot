@@ -4,6 +4,9 @@ from sqlalchemy.orm import sessionmaker
 import os
 from app.settings import DATABASE_URL
 import time
+import inspect
+import os
+from loguru import logger
 
 # Create directory for SQLite database if it doesn't exist
 os.makedirs(os.path.dirname(DATABASE_URL.replace('sqlite:///', '')), exist_ok=True)
@@ -43,7 +46,16 @@ def get_session():
     Base.metadata.create_all(engine)
     # Create session
     Session = sessionmaker(bind=engine)
-    return Session()
+    new_session = Session()
+    
+    # Логируем создание сессии для отладки
+    frame = inspect.currentframe().f_back
+    filename = os.path.basename(frame.f_code.co_filename)
+    line_number = frame.f_lineno
+    caller = f"{filename}:{line_number}"
+    logger.debug(f"New DB session created from {caller}")
+    
+    return new_session
 
 def init_db():
     """Initialize the database and create all tables."""

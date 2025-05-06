@@ -50,16 +50,16 @@ async def alert_worker():
                 # Calculate price change percentage
                 if previous_price > 0:
                     change_pct = (current_price - previous_price) / previous_price * 100
-                    direction = "📈" if change_pct >= 0 else "📉"
+                    direction = "🟢" if change_pct >= 0 else "🔴"
                 else:
                     change_pct = 0
-                    direction = ""
+                    direction = "🟢"
                 
                 # Format message
                 message = (
-                    f"🚨 <b>Price Alert: {alert.symbol}</b> 🚨\n\n"
+                    f"<b>Price Alert: {alert.symbol}</b>\n\n"
                     f"Current Price: ${current_price:,.2f}\n"
-                    f"Previous Alert: ${previous_price:,.2f}\n"
+                    f"Previous Price: ${previous_price:,.2f}\n"
                     f"Change: {direction} ${abs(current_price - previous_price):,.2f} ({change_pct:.2f}%)\n"
                     f"Time since last alert: {time_str}\n\n"
                     f"Alert Step: ${alert.price_multiplier:g}"
@@ -92,7 +92,18 @@ async def main():
     
     # Apply migrations
     success = migrate_add_last_alert_time()
-    logger.info("Database migration completed")
+    if success:
+        logger.info("Database migration completed successfully")
+    else:
+        logger.error("Database migration failed")
+    
+    # Проверка и исправление last_alert_time для всех алертов
+    try:
+        from app.services.token_alert_service import TokenAlertService
+        await TokenAlertService.check_price_alerts()
+        logger.info("Initial price check completed, all alerts initialized")
+    except Exception as e:
+        logger.error(f"Error during initial price check: {e}")
     
     # Initialize Dispatcher with memory storage
     dp = Dispatcher(storage=MemoryStorage())
