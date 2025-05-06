@@ -144,16 +144,20 @@ async def set_price_multiplier(callback: CallbackQuery):
     _, symbol, multiplier_str = callback.data.split(":")
     multiplier = float(multiplier_str)
     
+    logger.info(f"User {user_id} is setting up alert for {symbol} with step ${multiplier:g}")
+    
     # Add alert
     alert = await TokenAlertService.add_alert(user_id, symbol, multiplier)
     
     if alert:
+        logger.info(f"Successfully created alert for {symbol} (step: ${multiplier:g}) for user {user_id}")
         await callback.message.edit_text(
             f"✅ Alert set for {symbol} with ${multiplier:g} threshold.\n\n"
             f"You will be notified when the price crosses multiples of ${multiplier:g}.",
             reply_markup=UserKeyboard.dashboard_menu()
         )
     else:
+        logger.error(f"Failed to create alert for {symbol} (step: ${multiplier:g}) for user {user_id}")
         await callback.message.edit_text(
             f"❌ Failed to set alert for {symbol}. Please try again later.",
             reply_markup=UserKeyboard.dashboard_menu()
@@ -236,14 +240,17 @@ async def show_alert_options(callback: CallbackQuery):
 async def enable_alert(callback: CallbackQuery):
     """Enable a disabled alert."""
     alert_id = int(callback.data.split(":")[1])
+    user_id = callback.from_user.id
+    
+    logger.info(f"User {user_id} is enabling alert {alert_id}")
     
     success = await TokenAlertService.toggle_alert(alert_id, True)
     
     if success:
+        logger.info(f"Successfully enabled alert {alert_id} for user {user_id}")
         await callback.answer("Alert enabled")
         
         # Refresh alert options view
-        user_id = callback.from_user.id
         alerts = await TokenAlertService.get_user_alerts(user_id)
         alert = next((a for a in alerts if a.id == alert_id), None)
         
@@ -254,20 +261,24 @@ async def enable_alert(callback: CallbackQuery):
                 reply_markup=UserKeyboard.alert_options(alert.id, alert.is_active)
             )
     else:
+        logger.error(f"Failed to enable alert {alert_id} for user {user_id}")
         await callback.answer("Failed to enable alert")
 
 @router.callback_query(F.data.startswith("disable_alert:"))
 async def disable_alert(callback: CallbackQuery):
     """Disable an active alert."""
     alert_id = int(callback.data.split(":")[1])
+    user_id = callback.from_user.id
+    
+    logger.info(f"User {user_id} is disabling alert {alert_id}")
     
     success = await TokenAlertService.toggle_alert(alert_id, False)
     
     if success:
+        logger.info(f"Successfully disabled alert {alert_id} for user {user_id}")
         await callback.answer("Alert disabled")
         
         # Refresh alert options view
-        user_id = callback.from_user.id
         alerts = await TokenAlertService.get_user_alerts(user_id)
         alert = next((a for a in alerts if a.id == alert_id), None)
         
@@ -278,12 +289,16 @@ async def disable_alert(callback: CallbackQuery):
                 reply_markup=UserKeyboard.alert_options(alert.id, alert.is_active)
             )
     else:
+        logger.error(f"Failed to disable alert {alert_id} for user {user_id}")
         await callback.answer("Failed to disable alert")
 
 @router.callback_query(F.data.startswith("remove_alert:"))
 async def confirm_remove_alert(callback: CallbackQuery):
     """Ask confirmation before removing an alert."""
     alert_id = callback.data.split(":")[1]
+    user_id = callback.from_user.id
+    
+    logger.info(f"User {user_id} wants to remove alert {alert_id}, showing confirmation")
     
     await callback.message.edit_text(
         "Are you sure you want to remove this alert?",
@@ -295,13 +310,18 @@ async def confirm_remove_alert(callback: CallbackQuery):
 async def remove_alert(callback: CallbackQuery):
     """Remove an alert after confirmation."""
     alert_id = int(callback.data.split(":")[1])
+    user_id = callback.from_user.id
+    
+    logger.info(f"User {user_id} confirmed removal of alert {alert_id}")
     
     success = await TokenAlertService.remove_alert(alert_id)
     
     if success:
+        logger.info(f"Successfully removed alert {alert_id} for user {user_id}")
         await callback.answer("Alert removed")
         await show_user_alerts(callback)
     else:
+        logger.error(f"Failed to remove alert {alert_id} for user {user_id}")
         await callback.answer("Failed to remove alert")
         await show_user_alerts(callback)
 
@@ -418,9 +438,12 @@ async def update_alert_threshold(callback: CallbackQuery):
     alert_id = int(parts[1])
     new_threshold = float(parts[2])
     
+    logger.info(f"User {user_id} is updating alert {alert_id} step to ${new_threshold:g}")
+    
     success = await TokenAlertService.update_threshold(alert_id, new_threshold)
     
     if success:
+        logger.info(f"Successfully updated alert {alert_id} step to ${new_threshold:g} for user {user_id}")
         await callback.answer(f"Alert step updated to ${new_threshold:g}")
         
         # Get updated alert
@@ -437,6 +460,7 @@ async def update_alert_threshold(callback: CallbackQuery):
         else:
             await show_user_alerts(callback)
     else:
+        logger.error(f"Failed to update alert {alert_id} step for user {user_id}")
         await callback.answer("Failed to update alert step")
 
 @router.callback_query(F.data.startswith("custom_threshold:"))

@@ -67,7 +67,7 @@ async def alert_worker():
                 
                 # Format message
                 message = (
-                    f"🔔 *{alert.symbol}*\n"
+                    f"*{alert.symbol}*\n"
                     f"{direction_emoji} *${current_price:,.2f}*\n"
                     f"Change: *{diff_formatted}* ({percent_formatted})\n"
                     f"Alert step: *${alert.price_multiplier:g}*"
@@ -80,7 +80,7 @@ async def alert_worker():
                         message,
                         parse_mode="Markdown"
                     )
-                    logger.info(f"Sent alert to user {alert.user_id} for {alert.symbol} at ${current_price}")
+                    logger.info(f"Sent price alert to user {alert.user_id} for {alert.symbol}: ${current_price:,.2f} (change: {diff_formatted})")
                 except Exception as e:
                     logger.error(f"Failed to send alert to user {alert.user_id}: {e}")
         
@@ -90,6 +90,7 @@ async def alert_worker():
         # Wait before next check
         from app.settings import POLLING_INTERVAL
         await asyncio.sleep(POLLING_INTERVAL)
+        logger.debug(f"Alert worker checked prices after {POLLING_INTERVAL}s interval")
 
 async def main():
     """Main bot function."""

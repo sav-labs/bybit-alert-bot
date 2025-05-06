@@ -162,6 +162,12 @@ class TokenAlertService:
             # Get all active alerts
             active_alerts = session.query(TokenAlert).filter(TokenAlert.is_active == True).all()
             
+            if not active_alerts:
+                logger.debug("No active alerts found to check")
+                return []
+                
+            logger.debug(f"Checking {len(active_alerts)} active alerts")
+            
             # Загружаем необходимые атрибуты для каждого алерта
             for alert in active_alerts:
                 _ = alert.symbol
@@ -171,6 +177,7 @@ class TokenAlertService:
             
             # Group alerts by symbol to minimize API calls
             symbols = set(alert.symbol for alert in active_alerts)
+            logger.debug(f"Fetching prices for {len(symbols)} symbols: {', '.join(symbols)}")
             
             # Get prices for all symbols
             prices = {}
@@ -178,6 +185,9 @@ class TokenAlertService:
                 price = await BybitService.get_token_price(symbol)
                 if price:
                     prices[symbol] = price
+                    logger.debug(f"Fetched price for {symbol}: ${price:,.2f}")
+                else:
+                    logger.warning(f"Failed to fetch price for {symbol}")
             
             # Check each alert
             for alert in active_alerts:
@@ -186,8 +196,12 @@ class TokenAlertService:
                 
                 current_price = prices[alert.symbol]
                 previous_price = alert.last_alert_price  # Запоминаем предыдущую цену
+                price_diff = abs(current_price - previous_price)
+                
+                logger.debug(f"Checking alert for {alert.symbol} (user: {alert.user_id}): current=${current_price:,.2f}, prev=${previous_price:,.2f}, diff=${price_diff:,.2f}, step=${alert.price_multiplier:g}")
                 
                 if TokenAlertService.should_alert(current_price, previous_price, alert.price_multiplier):
+                    logger.debug(f"Alert condition triggered for {alert.symbol}: price change (${price_diff:,.2f}) >= step (${alert.price_multiplier:g})")
                     alerts_to_send.append({
                         "alert": alert,
                         "current_price": current_price,
@@ -198,6 +212,12 @@ class TokenAlertService:
                     alert.last_alert_price = current_price
             
             session.commit()
+            
+            if alerts_to_send:
+                logger.debug(f"Found {len(alerts_to_send)} alerts to send")
+            else:
+                logger.debug("No alerts triggered")
+                
             return alerts_to_send
         except SQLAlchemyError as e:
             session.rollback()
