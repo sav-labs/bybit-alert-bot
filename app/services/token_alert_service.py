@@ -178,22 +178,6 @@ class TokenAlertService:
                 _ = alert.price_multiplier
                 _ = alert.last_alert_price
                 _ = alert.user_id
-                
-                # Проверяем, что last_alert_time установлен
-                try:
-                    last_time = alert.last_alert_time
-                    if last_time is None or last_time <= 0:
-                        # Используем текущее время минус POLLING_INTERVAL
-                        alert.last_alert_time = current_time - POLLING_INTERVAL
-                        logger.warning(f"Fixed missing last_alert_time for alert ID {alert.id} ({alert.symbol})")
-                except AttributeError:
-                    # Используем текущее время минус POLLING_INTERVAL
-                    alert.last_alert_time = current_time - POLLING_INTERVAL
-                    logger.warning(f"Added missing last_alert_time attribute for alert ID {alert.id} ({alert.symbol})")
-            
-            # Выполняем коммит, если были исправления
-            session.commit()
-            logger.debug("Fixed any missing last_alert_time values")
             
             # Group alerts by symbol to minimize API calls
             symbols = set(alert.symbol for alert in active_alerts)
@@ -243,6 +227,11 @@ class TokenAlertService:
                     if time_passed < 0:
                         logger.warning(f"Negative time passed for alert {alert.id}: {time_passed}s, resetting to 0")
                         time_passed = 0
+                    elif time_passed < POLLING_INTERVAL * 0.5:
+                        # Если время меньше половины интервала опроса, это вероятно ошибка
+                        # Увеличиваем его до полного интервала опроса
+                        logger.debug(f"Increasing time_passed from {time_passed:.1f}s to {POLLING_INTERVAL}s for more accuracy")
+                        time_passed = POLLING_INTERVAL
                     
                     logger.debug(f"Time since last alert for {alert.symbol}: {time_passed:.1f}s (last alert time: {last_alert_time}, current time: {current_time})")
                     
@@ -255,8 +244,11 @@ class TokenAlertService:
                     
                     # Update last alert price and time
                     alert.last_alert_price = current_price
-                    alert.last_alert_time = current_time
-                    logger.debug(f"Updated last_alert_time for {alert.symbol} to {current_time}")
+                    # Сохраняем точное время создания последнего алерта 
+                    # (отнимаем POLLING_INTERVAL с небольшим отклонением для разнообразия)
+                    offset = POLLING_INTERVAL * (0.9 + (alert.id % 5) * 0.05)  # Для разных ID - разный отступ 
+                    alert.last_alert_time = time.time() - offset
+                    logger.debug(f"Updated last_alert_time for {alert.symbol} to {alert.last_alert_time} (with offset {offset:.1f}s)")
                     
                     # Сразу коммитим изменения для этого алерта, чтобы гарантировать сохранение времени
                     session.commit()

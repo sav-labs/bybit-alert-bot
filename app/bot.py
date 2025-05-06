@@ -57,10 +57,10 @@ async def alert_worker():
                 
                 # Format message
                 message = (
-                    f"<b>{alert.symbol}</b>\n\n"
+                    f"{direction} <b>{alert.symbol}</b>\n\n"
                     f"Current Price: ${current_price:,.2f}\n"
                     f"Previous Price: ${previous_price:,.2f}\n"
-                    f"Change: {direction} ${abs(current_price - previous_price):,.2f} ({change_pct:.2f}%)\n"
+                    f"Change: ${abs(current_price - previous_price):,.2f} ({change_pct:.2f}%)\n"
                     f"Time since last alert: {time_str}\n\n"
                     f"Alert Step: ${alert.price_multiplier:g}"
                 )

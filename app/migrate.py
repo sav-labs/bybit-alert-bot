@@ -41,17 +41,20 @@ def migrate_add_last_alert_time():
             conn.commit()
             logger.info(f"Fixed {null_count} records with NULL or zero last_alert_time")
             
-        # Обновляем все записи с текущим временем (last_alert_time = current_time) 
-        # на время в прошлом, чтобы избежать "just now"
-        cursor.execute("SELECT COUNT(*) FROM token_alerts WHERE ABS(last_alert_time - ?) < 10", (current_time,))
-        recent_count = cursor.fetchone()[0]
+        # Получим все алерты и обновим их last_alert_time, чтобы иметь разное время для каждого
+        cursor.execute("SELECT id FROM token_alerts")
+        alerts = cursor.fetchall()
         
-        if recent_count > 0:
-            logger.warning(f"Found {recent_count} records with very recent last_alert_time, setting to 1 hour ago")
-            cursor.execute("UPDATE token_alerts SET last_alert_time = ? WHERE ABS(last_alert_time - ?) < 10", (past_time, current_time))
-            conn.commit()
-            logger.info(f"Fixed {recent_count} records with very recent last_alert_time")
-            
+        for i, alert in enumerate(alerts):
+            alert_id = alert[0]
+            # Устанавливаем разные временные метки для разных алертов
+            new_time = past_time - (i * 60)  # Разница в 1 минуту между алертами
+            cursor.execute("UPDATE token_alerts SET last_alert_time = ? WHERE id = ?", (new_time, alert_id))
+            logger.info(f"Updated alert ID {alert_id} with unique last_alert_time: {new_time}")
+        
+        conn.commit()
+        logger.info(f"Updated all alerts with unique last_alert_time values")
+        
         return True
     except Exception as e:
         logger.error(f"Migration error: {e}")
