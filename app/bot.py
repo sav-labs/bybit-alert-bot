@@ -28,15 +28,22 @@ async def alert_worker():
                 time_passed = item.get("time_passed", 0)  # Получаем время в секундах с предыдущего алерта
                 
                 # Форматируем прошедшее время
-                hours, remainder = divmod(int(time_passed), 3600)
-                minutes, seconds = divmod(remainder, 60)
-                
-                if hours > 0:
-                    time_str = f"{hours}h {minutes}m {seconds}s"
-                elif minutes > 0:
-                    time_str = f"{minutes}m {seconds}s"
+                if time_passed < 0:
+                    # Если время отрицательное (из-за ошибки инициализации), показываем "N/A"
+                    time_str = "N/A"
+                elif time_passed < 1:
+                    # Если меньше секунды, показываем "< 1s"
+                    time_str = "< 1s"
                 else:
-                    time_str = f"{seconds}s"
+                    hours, remainder = divmod(int(time_passed), 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    
+                    if hours > 0:
+                        time_str = f"{hours}h {minutes}m {seconds}s"
+                    elif minutes > 0:
+                        time_str = f"{minutes}m {seconds}s"
+                    else:
+                        time_str = f"{seconds}s"
                 
                 # Рассчитываем изменение цены
                 price_diff = current_price - last_price

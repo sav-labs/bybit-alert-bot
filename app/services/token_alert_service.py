@@ -206,8 +206,10 @@ class TokenAlertService:
                     logger.debug(f"Alert condition triggered for {alert.symbol}: price change (${price_diff:,.2f}) >= step (${alert.price_multiplier:g})")
                     
                     # Получаем время последнего алерта (или текущее, если это первый алерт)
-                    last_alert_time = getattr(alert, 'last_alert_time', None) or current_time
-                    time_passed = current_time - last_alert_time
+                    last_alert_time = getattr(alert, 'last_alert_time', None)
+                    time_passed = current_time - last_alert_time if last_alert_time else 0
+                    
+                    logger.debug(f"Time since last alert for {alert.symbol}: {time_passed:.1f}s (last alert time: {last_alert_time})")
                     
                     alerts_to_send.append({
                         "alert": alert,
