@@ -7,12 +7,36 @@ from loguru import logger
 
 from app.settings import BOT_TOKEN, BOT_ADMINS, POLLING_INTERVAL
 from app.handlers import routers
-from app.db import get_session, Base, engine, init_db
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 from app.services.token_alert_service import TokenAlertService
 from app.migrate import migrate_add_last_alert_time
 
+# Импортируем БД напрямую, без ссылки на модуль db
+from app.settings import DATABASE_URL
+import os
+
+# Создаем директории для БД, если их нет
+os.makedirs(os.path.dirname(DATABASE_URL.replace('sqlite:///', '')), exist_ok=True)
+
+# Создаем движок и базовый класс
+engine = create_engine(DATABASE_URL)
+Base = declarative_base()
+
 # Global bot instance for access from other modules
 bot = Bot(token=BOT_TOKEN)
+
+def get_session():
+    """Создает новую сессию для работы с БД."""
+    Session = sessionmaker(bind=engine)
+    return Session()
+
+def init_db():
+    """Инициализирует БД и создает таблицы."""
+    from app.db import User, TokenAlert  # Импортируем модели
+    Base.metadata.create_all(engine)
+    return True
 
 # Функция для форматирования временных интервалов
 def format_time_interval(seconds):
