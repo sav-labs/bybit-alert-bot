@@ -1,24 +1,17 @@
 from app.db import get_session, User
-from app.settings import BOT_ADMINS
+from app.settings import BOT_ADMINS, ADMIN_USER_IDS
 from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
+from typing import Optional, List
 
 class UserService:
     @staticmethod
-    async def get_user(user_id: int) -> User:
-        """Get a user by user_id."""
+    async def get_user(user_id: int) -> Optional[User]:
+        """Get user by ID."""
         session = get_session()
         try:
             user = session.query(User).filter(User.user_id == user_id).first()
-            
-            if user:
-                _ = user.is_admin
-                _ = user.is_blocked
-                _ = user.is_approved
-                _ = user.username
-                _ = user.first_name
-                _ = user.last_name
-            
+            logger.debug(f"Retrieved user from DB: {user_id} (exists: {user is not None})")
             return user
         except SQLAlchemyError as e:
             logger.error(f"Error getting user {user_id}: {e}")
@@ -27,31 +20,42 @@ class UserService:
             session.close()
     
     @staticmethod
-    async def create_user(user_id: int, username: str = None, first_name: str = None, last_name: str = None) -> User:
+    async def create_user(user_id: int, username: str = None, first_name: str = None, last_name: str = None) -> Optional[User]:
         """Create a new user."""
         session = get_session()
         try:
-            is_admin = user_id in BOT_ADMINS
-            is_approved = is_admin  # Admins are auto-approved
+            # Check if user already exists
+            existing = session.query(User).filter(User.user_id == user_id).first()
+            if existing:
+                logger.debug(f"User {user_id} already exists, updating info")
+                if username is not None:
+                    existing.username = username
+                if first_name is not None:
+                    existing.first_name = first_name
+                if last_name is not None:
+                    existing.last_name = last_name
+                    
+                session.commit()
+                return existing
             
+            # Set as admin if in admin list
+            is_admin = user_id in ADMIN_USER_IDS
+            
+            # Create new user
             user = User(
                 user_id=user_id,
                 username=username,
                 first_name=first_name,
                 last_name=last_name,
                 is_admin=is_admin,
-                is_approved=is_approved
+                is_approved=is_admin  # Auto-approve admins
             )
             
             session.add(user)
             session.commit()
             
-            _ = user.is_admin
-            _ = user.is_blocked
-            _ = user.is_approved
-            _ = user.username
-            _ = user.first_name
-            _ = user.last_name
+            name_str = f"@{username}" if username else first_name
+            logger.info(f"Created new user: {name_str} (ID: {user_id}, admin: {is_admin})")
             
             return user
         except SQLAlchemyError as e:

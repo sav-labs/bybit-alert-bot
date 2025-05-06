@@ -79,26 +79,30 @@ async def process_custom_token_input(message: Message, state: FSMContext):
 
 @router.message(AddAlertStates.waiting_for_symbol)
 async def process_symbol_input(message: Message, state: FSMContext):
-    """Process user input for token symbol."""
-    symbol = message.text.strip().upper()
+    """Handler for token input during alert creation."""
+    token = message.text.strip().upper()
+    user_id = message.from_user.id
+    logger.info(f"User {user_id} entered token: {token}")
     
-    # Check if token exists
-    is_valid = await BybitService.is_token_valid(symbol)
-    
+    # First, validate the token
+    is_valid = await BybitService.is_token_valid(token)
     if not is_valid:
+        logger.warning(f"User {user_id} entered invalid token: {token}")
         await message.answer(
-            f"Token {symbol} not found on Bybit. Please check the symbol and try again."
+            f"❌ Token '{token}' not found on Bybit.\n\n"
+            "Please enter a valid token symbol (e.g., BTC), or type /cancel to abort."
         )
         return
     
-    # Token exists, show price multiplier selection
-    await message.answer(
-        f"Token {symbol} found! Now select the price change step you want to monitor:",
-        reply_markup=UserKeyboard.price_multiplier_select(symbol)
-    )
+    logger.info(f"User {user_id} entered valid token: {token}")
+    await state.update_data(token=token)
     
-    # Clear state
-    await state.clear()
+    # Move to the next step (price multiplier)
+    await state.set_state(AddAlertStates.waiting_for_custom_threshold)
+    await message.answer(
+        f"✅ Token '{token}' found on Bybit.\n\n"
+        "Now, please enter the price change step for alert (e.g., 1000 for BTC, 10 for SOL, etc.)."
+    )
 
 # Добавим обработчик для проверки, является ли сообщение токеном
 @router.message(lambda message: TOKEN_PATTERN.match(message.text.strip().upper()))

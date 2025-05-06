@@ -35,4 +35,12 @@ class TokenAlert(Base):
     last_alert_price = Column(Float)
     last_alert_time = Column(Float, default=time.time)
     is_active = Column(Boolean, default=True)
-    created_at = Column(Float, default=time.time) 
+    created_at = Column(Float, default=time.time)
+
+# Создаем и возвращаем сессию для работы с БД
+def get_session():
+    # Create all tables if they don't exist
+    Base.metadata.create_all(engine)
+    # Create session
+    Session = sessionmaker(bind=engine)
+    return Session() 

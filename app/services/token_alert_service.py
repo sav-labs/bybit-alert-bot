@@ -206,15 +206,20 @@ class TokenAlertService:
                 if TokenAlertService.should_alert(current_price, previous_price, alert.price_multiplier):
                     logger.debug(f"Alert condition triggered for {alert.symbol}: price change (${price_diff:,.2f}) >= step (${alert.price_multiplier:g})")
                     
-                    # Получаем время последнего алерта и вычисляем прошедшее время
-                    last_alert_time = alert.last_alert_time
-                    
-                    # Если last_alert_time не определено (что не должно происходить)
-                    if last_alert_time is None:
-                        logger.warning(f"Alert {alert.id} for {alert.symbol} has no last_alert_time, initializing with current time")
-                        time_passed = 0
-                    else:
-                        time_passed = current_time - last_alert_time
+                    # Проверяем наличие атрибута last_alert_time и создаем его при необходимости
+                    try:
+                        last_alert_time = alert.last_alert_time
+                        if last_alert_time is None:
+                            logger.warning(f"Alert {alert.id} for {alert.symbol} has None last_alert_time, initializing with current time")
+                            last_alert_time = current_time
+                    except AttributeError:
+                        logger.warning(f"Alert {alert.id} for {alert.symbol} missing last_alert_time attribute, initializing")
+                        # Добавляем атрибут в объект
+                        alert.last_alert_time = current_time
+                        last_alert_time = current_time
+                        
+                    # Вычисляем прошедшее время
+                    time_passed = current_time - last_alert_time
                     
                     if time_passed < 0:
                         logger.warning(f"Negative time passed for alert {alert.id}: {time_passed}s, resetting to 0")

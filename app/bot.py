@@ -1,102 +1,81 @@
 import asyncio
-import sys
 from aiogram import Bot, Dispatcher
-from aiogram.fsm.storage.memory import MemoryStorage
+import logging
 from loguru import logger
 
-from app.settings import BOT_TOKEN
+from app.settings import BOT_TOKEN, TG_BOT_TOKEN, DEFAULT_POLLING_INTERVAL, ADMIN_USER_IDS
 from app.handlers import routers
-from app.db import init_db
+from app.db import init_db, get_session, Base, engine
 from app.services.token_alert_service import TokenAlertService
-from app.migrate import migrate_add_last_alert_time
+from app.migrate import migrate_add_last_alert_time, apply_migrations
+from app.states import wait_for_token_step
+from app.keyboards import get_main_keyboard, get_alert_keyboard, get_dashboard_keyboard
 
 # Global bot instance for access from other modules
 bot = Bot(token=BOT_TOKEN)
 
+# Функция для форматирования временных интервалов
+def format_time_interval(seconds):
+    """Format time interval in seconds to human-readable string."""
+    if seconds < 0:
+        return "N/A"
+    elif seconds < 1:
+        return "just now"
+    
+    hours, remainder = divmod(int(seconds), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    
+    if hours > 0:
+        return f"{hours}h {minutes}m"
+    elif minutes > 0:
+        return f"{minutes}m {seconds}s"
+    else:
+        return f"{seconds}s"
+
 async def alert_worker():
-    """Background worker that checks for price alerts."""
+    """Separate worker to check prices and send alerts."""
     while True:
         try:
-            # Check for alerts that need to be sent
-            alerts_to_send = await TokenAlertService.check_price_alerts()
+            logger.debug("Alert worker checked prices after 30s interval")
+            alerts = await TokenAlertService.check_price_alerts()
             
-            # Send notifications for each alert
-            for item in alerts_to_send:
-                alert = item["alert"]
-                current_price = item["current_price"]
-                last_price = item["previous_price"]  # Получаем предыдущую цену из результата
-                time_passed = item.get("time_passed", 0)  # Получаем время в секундах с предыдущего алерта
+            for alert_data in alerts:
+                alert = alert_data["alert"]
+                current_price = alert_data["current_price"]
+                previous_price = alert_data["previous_price"]
+                time_passed = alert_data["time_passed"]
                 
-                # Форматируем прошедшее время
-                if time_passed < 0:
-                    # Если время отрицательное (из-за ошибки инициализации), показываем "N/A"
-                    time_str = "N/A"
-                elif time_passed < 1:
-                    # Если меньше секунды, показываем "just now"
-                    time_str = "just now"
+                # Format time passed in a human-readable way
+                time_str = format_time_interval(time_passed)
+                
+                # Calculate price change percentage
+                if previous_price > 0:
+                    change_pct = (current_price - previous_price) / previous_price * 100
+                    direction = "📈" if change_pct >= 0 else "📉"
                 else:
-                    hours, remainder = divmod(int(time_passed), 3600)
-                    minutes, seconds = divmod(remainder, 60)
-                    
-                    if hours > 0:
-                        time_str = f"{hours}h {minutes}m"
-                    elif minutes > 0:
-                        time_str = f"{minutes}m {seconds}s"
-                    else:
-                        time_str = f"{seconds}s"
-                
-                # Рассчитываем изменение цены
-                price_diff = current_price - last_price
-                price_diff_percent = (price_diff / last_price) * 100 if last_price else 0
-                
-                # Определяем направление движения цены
-                is_price_up = price_diff > 0  # Используем price_diff напрямую для определения направления
-                direction_emoji = "🟢" if is_price_up else "🔴"
-                
-                # Форматируем значение изменения, гарантируя отображение даже маленьких изменений
-                sign = "+" if is_price_up else "-"
-                abs_diff = abs(price_diff)
-                
-                # Форматируем дифференциалы цены, ограничивая два знака после запятой для процентов
-                if abs_diff < 0.01:
-                    diff_formatted = f"{sign}${abs_diff:.6f}"
-                else:
-                    diff_formatted = f"{sign}${abs_diff:,.2f}"
-                
-                # Всегда показываем два знака после запятой для процентов
-                percent_formatted = f"{sign}{abs(price_diff_percent):.2f}%"
-                
-                # Логирование для отладки
-                logger.debug(f"Price change: from {last_price} to {current_price} = {price_diff}")
-                logger.debug(f"Formatted: {diff_formatted} ({percent_formatted})")
+                    change_pct = 0
+                    direction = ""
                 
                 # Format message
                 message = (
-                    f"*{alert.symbol}*\n"
-                    f"{direction_emoji} *${current_price:,.2f}*\n"
-                    f"Change: *{diff_formatted}* ({percent_formatted})\n"
-                    f"Time since last alert: *{time_str}*\n"
-                    f"Alert step: *${alert.price_multiplier:g}*"
+                    f"🚨 <b>Price Alert: {alert.symbol}</b> 🚨\n\n"
+                    f"Current Price: ${current_price:,.2f}\n"
+                    f"Previous Alert: ${previous_price:,.2f}\n"
+                    f"Change: {direction} ${abs(current_price - previous_price):,.2f} ({change_pct:.2f}%)\n"
+                    f"Time since last alert: {time_str}\n\n"
+                    f"Alert Step: ${alert.price_multiplier:g}"
                 )
                 
                 try:
-                    # Send message to user
-                    await bot.send_message(
-                        alert.user_id,
-                        message,
-                        parse_mode="Markdown"
-                    )
-                    logger.info(f"Sent price alert to user {alert.user_id} for {alert.symbol}: ${current_price:,.2f} (change: {diff_formatted})")
+                    await bot.send_message(chat_id=alert.user_id, text=message, parse_mode="HTML")
+                    logger.info(f"Sent price alert to user {alert.user_id} for {alert.symbol} (${current_price:,.2f})")
                 except Exception as e:
                     logger.error(f"Failed to send alert to user {alert.user_id}: {e}")
-        
+            
         except Exception as e:
             logger.error(f"Error in alert worker: {e}")
         
-        # Wait before next check
-        from app.settings import POLLING_INTERVAL
-        await asyncio.sleep(POLLING_INTERVAL)
-        logger.debug(f"Alert worker checked prices after {POLLING_INTERVAL}s interval")
+        await asyncio.sleep(30)  # Check every 30 seconds
 
 async def main():
     """Main bot function."""
