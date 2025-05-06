@@ -128,12 +128,11 @@ class TokenAlertService:
         if last_alert_price is None:
             return True
         
-        # Get the price multiples
-        current_multiple = math.floor(current_price / price_multiplier)
-        last_multiple = math.floor(last_alert_price / price_multiplier)
+        # Определяем абсолютную разницу между текущей и последней ценой алерта
+        price_diff = abs(current_price - last_alert_price)
         
-        # Alert if the price has crossed a multiple boundary
-        return current_multiple != last_multiple
+        # Алерт срабатывает только если изменение цены больше или равно заданному порогу
+        return price_diff >= price_multiplier
     
     @staticmethod
     async def update_last_alert_price(alert_id: int, new_price: float) -> bool:
@@ -202,5 +201,33 @@ class TokenAlertService:
             session.rollback()
             logger.error(f"Error checking price alerts: {e}")
             return []
+        finally:
+            session.close()
+    
+    @staticmethod
+    async def update_threshold(alert_id: int, new_threshold: float) -> bool:
+        """Update the threshold for an alert."""
+        if new_threshold <= 0:
+            return False
+        
+        session = get_session()
+        try:
+            alert = session.query(TokenAlert).filter(TokenAlert.id == alert_id).first()
+            if alert:
+                # Обновляем threshold
+                alert.price_multiplier = new_threshold
+                # Получаем текущую цену для нового расчета алертов
+                current_price = await BybitService.get_token_price(alert.symbol)
+                # Обновляем last_alert_price, чтобы расчет начался с новой точки
+                if current_price:
+                    alert.last_alert_price = current_price
+                
+                session.commit()
+                return True
+            return False
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"Error updating threshold for alert {alert_id}: {e}")
+            return False
         finally:
             session.close() 

@@ -17,6 +17,7 @@ TOKEN_PATTERN = re.compile(r'^[A-Z0-9]{2,10}$')
 class AddAlertStates(StatesGroup):
     waiting_for_symbol = State()
     waiting_for_custom_token = State()
+    waiting_for_custom_threshold = State()
 
 @router.callback_query(F.data == "add_alert")
 async def add_alert_start(callback: CallbackQuery, state: FSMContext):
@@ -380,4 +381,126 @@ async def select_token(callback: CallbackQuery):
         f"You selected {symbol}. Now choose the price threshold for alerts:",
         reply_markup=UserKeyboard.price_multiplier_select(symbol)
     )
-    await callback.answer() 
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("change_threshold:"))
+async def change_alert_threshold(callback: CallbackQuery):
+    """Show threshold options for changing an alert's threshold."""
+    user_id = callback.from_user.id
+    alert_id = int(callback.data.split(":")[1])
+    
+    # Get all user alerts
+    alerts = await TokenAlertService.get_user_alerts(user_id)
+    
+    # Find the specific alert
+    alert = next((a for a in alerts if a.id == alert_id), None)
+    
+    if not alert:
+        await callback.message.edit_text(
+            "Alert not found. It may have been deleted.",
+            reply_markup=UserKeyboard.dashboard_menu()
+        )
+        await callback.answer()
+        return
+    
+    await callback.message.edit_text(
+        f"Select new threshold for {alert.symbol} alert:\n"
+        f"Current threshold: ${alert.price_multiplier:g}",
+        reply_markup=UserKeyboard.threshold_options(alert.id, alert.symbol)
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("update_threshold:"))
+async def update_alert_threshold(callback: CallbackQuery):
+    """Update an alert's threshold with a predefined value."""
+    user_id = callback.from_user.id
+    parts = callback.data.split(":")
+    alert_id = int(parts[1])
+    new_threshold = float(parts[2])
+    
+    success = await TokenAlertService.update_threshold(alert_id, new_threshold)
+    
+    if success:
+        await callback.answer(f"Threshold updated to ${new_threshold:g}")
+        
+        # Get updated alert
+        alerts = await TokenAlertService.get_user_alerts(user_id)
+        alert = next((a for a in alerts if a.id == alert_id), None)
+        
+        # Show alert options again
+        if alert:
+            await callback.message.edit_text(
+                f"Alert options for {alert.symbol} (${alert.price_multiplier:g}):\n"
+                f"Status: {'Active' if alert.is_active else 'Disabled'}",
+                reply_markup=UserKeyboard.alert_options(alert.id, alert.is_active)
+            )
+        else:
+            await show_user_alerts(callback)
+    else:
+        await callback.answer("Failed to update threshold")
+
+@router.callback_query(F.data.startswith("custom_threshold:"))
+async def enter_custom_threshold(callback: CallbackQuery, state: FSMContext):
+    """Allow user to enter a custom threshold."""
+    alert_id = int(callback.data.split(":")[1])
+    
+    await state.set_state(AddAlertStates.waiting_for_custom_threshold)
+    await state.update_data(alert_id=alert_id)
+    
+    await callback.message.edit_text(
+        "Please enter a custom threshold value (e.g. 0.5, 1.25, 333):"
+    )
+    await callback.answer()
+
+@router.message(AddAlertStates.waiting_for_custom_threshold)
+async def process_custom_threshold(message: Message, state: FSMContext):
+    """Process custom threshold input."""
+    # Get state data
+    state_data = await state.get_data()
+    alert_id = state_data.get("alert_id")
+    
+    if not alert_id:
+        await message.answer("An error occurred. Please try again.")
+        await state.clear()
+        return
+    
+    # Try to parse the threshold
+    try:
+        new_threshold = float(message.text.strip())
+        if new_threshold <= 0:
+            raise ValueError("Threshold must be positive")
+    except ValueError:
+        await message.answer(
+            "Invalid threshold value. Please enter a positive number (e.g. 0.5, 1.25, 333)."
+        )
+        return
+    
+    # Update threshold
+    success = await TokenAlertService.update_threshold(alert_id, new_threshold)
+    
+    if success:
+        # Get updated alert info
+        user_id = message.from_user.id
+        alerts = await TokenAlertService.get_user_alerts(user_id)
+        alert = next((a for a in alerts if a.id == alert_id), None)
+        
+        if alert:
+            await message.answer(
+                f"Threshold for {alert.symbol} alert updated to ${new_threshold:g}.\n\n"
+                f"Alert options for {alert.symbol} (${alert.price_multiplier:g}):\n"
+                f"Status: {'Active' if alert.is_active else 'Disabled'}",
+                reply_markup=UserKeyboard.alert_options(alert.id, alert.is_active)
+            )
+        else:
+            await message.answer(
+                f"Threshold updated to ${new_threshold:g}",
+                reply_markup=UserKeyboard.dashboard_menu()
+            )
+    else:
+        await message.answer(
+            "Failed to update threshold. Please try again later.",
+            reply_markup=UserKeyboard.dashboard_menu()
+        )
+    
+    # Clear state
+    await state.clear() 

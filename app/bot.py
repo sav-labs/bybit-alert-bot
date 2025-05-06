@@ -25,15 +25,25 @@ async def alert_worker():
                 current_price = item["current_price"]
                 last_price = alert.last_alert_price
                 
+                # Рассчитываем изменение цены
+                price_diff = current_price - last_price
+                price_diff_percent = (price_diff / last_price) * 100 if last_price else 0
+                
                 # Определяем направление движения цены
-                direction_emoji = "🔼" if current_price > last_price else "🔽"
-                change_text = "increased" if current_price > last_price else "decreased"
+                is_price_up = current_price > last_price
+                direction_emoji = "🟢 🔼" if is_price_up else "🔴 🔽"
+                change_text = "increased" if is_price_up else "decreased"
+                
+                # Форматируем значение изменения
+                diff_formatted = f"+${abs(price_diff):,.2f}" if is_price_up else f"-${abs(price_diff):,.2f}"
+                percent_formatted = f"+{abs(price_diff_percent):.2f}%" if is_price_up else f"-{abs(price_diff_percent):.2f}%"
                 
                 # Format message
                 message = (
                     f"🔔 *Price Alert for {alert.symbol}*\n\n"
                     f"{direction_emoji} Price has {change_text} to *${current_price:,.2f}*\n"
-                    f"Price crossed threshold: *${alert.price_multiplier:g}*"
+                    f"Change: *{diff_formatted}* ({percent_formatted})\n"
+                    f"Alert threshold: *${alert.price_multiplier:g}*"
                 )
                 
                 try:

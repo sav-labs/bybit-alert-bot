@@ -140,6 +140,12 @@ class UserKeyboard:
             callback_data=f"{status_action}_alert:{alert_id}"
         )])
         
+        # Change threshold button
+        buttons.append([InlineKeyboardButton(
+            text="⚙️ Change Threshold", 
+            callback_data=f"change_threshold:{alert_id}"
+        )])
+        
         # Remove button
         buttons.append([InlineKeyboardButton(
             text="🗑️ Remove Alert", 
@@ -148,6 +154,30 @@ class UserKeyboard:
         
         # Back button
         buttons.append([InlineKeyboardButton(text="🔙 Back", callback_data="my_alerts")])
+        
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
+    
+    @staticmethod
+    def threshold_options(alert_id: int, symbol: str) -> InlineKeyboardMarkup:
+        """Threshold selection keyboard for existing alert."""
+        buttons = []
+        
+        # Add predefined price multipliers
+        for multiplier in AVAILABLE_PRICE_MULTIPLIERS:
+            formatted = f"${multiplier:g}"  # Remove trailing zeros
+            buttons.append([InlineKeyboardButton(
+                text=formatted, 
+                callback_data=f"update_threshold:{alert_id}:{multiplier}"
+            )])
+        
+        # Add custom threshold button
+        buttons.append([InlineKeyboardButton(
+            text="Custom Value", 
+            callback_data=f"custom_threshold:{alert_id}"
+        )])
+        
+        # Add back button
+        buttons.append([InlineKeyboardButton(text="🔙 Back", callback_data=f"alert_options:{alert_id}")])
         
         return InlineKeyboardMarkup(inline_keyboard=buttons)
     
