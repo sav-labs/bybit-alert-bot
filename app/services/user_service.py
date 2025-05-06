@@ -1,5 +1,5 @@
 from app.db import get_session, User
-from app.settings import BOT_ADMINS, ADMIN_USER_IDS
+from app.settings import BOT_ADMINS
 from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional, List
@@ -39,7 +39,7 @@ class UserService:
                 return existing
             
             # Set as admin if in admin list
-            is_admin = user_id in ADMIN_USER_IDS
+            is_admin = user_id in BOT_ADMINS
             
             # Create new user
             user = User(

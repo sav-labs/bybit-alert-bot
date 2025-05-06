@@ -1,9 +1,10 @@
 import asyncio
 from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
 import logging
 from loguru import logger
 
-from app.settings import BOT_TOKEN, TG_BOT_TOKEN, DEFAULT_POLLING_INTERVAL, ADMIN_USER_IDS
+from app.settings import BOT_TOKEN, BOT_ADMINS, POLLING_INTERVAL
 from app.handlers import routers
 from app.db import init_db, get_session, Base, engine
 from app.services.token_alert_service import TokenAlertService
@@ -36,7 +37,6 @@ async def alert_worker():
     """Separate worker to check prices and send alerts."""
     while True:
         try:
-            logger.debug("Alert worker checked prices after 30s interval")
             alerts = await TokenAlertService.check_price_alerts()
             
             for alert_data in alerts:
@@ -75,7 +75,9 @@ async def alert_worker():
         except Exception as e:
             logger.error(f"Error in alert worker: {e}")
         
-        await asyncio.sleep(30)  # Check every 30 seconds
+        # Ждем перед следующей проверкой
+        await asyncio.sleep(POLLING_INTERVAL)  
+        logger.debug(f"Alert worker checked prices after {POLLING_INTERVAL}s interval")
 
 async def main():
     """Main bot function."""
