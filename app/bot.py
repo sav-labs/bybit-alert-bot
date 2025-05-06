@@ -32,14 +32,14 @@ async def alert_worker():
                     # Если время отрицательное (из-за ошибки инициализации), показываем "N/A"
                     time_str = "N/A"
                 elif time_passed < 1:
-                    # Если меньше секунды, показываем "< 1s"
-                    time_str = "< 1s"
+                    # Если меньше секунды, показываем "just now"
+                    time_str = "just now"
                 else:
                     hours, remainder = divmod(int(time_passed), 3600)
                     minutes, seconds = divmod(remainder, 60)
                     
                     if hours > 0:
-                        time_str = f"{hours}h {minutes}m {seconds}s"
+                        time_str = f"{hours}h {minutes}m"
                     elif minutes > 0:
                         time_str = f"{minutes}m {seconds}s"
                     else:
@@ -56,30 +56,15 @@ async def alert_worker():
                 # Форматируем значение изменения, гарантируя отображение даже маленьких изменений
                 sign = "+" if is_price_up else "-"
                 abs_diff = abs(price_diff)
-                abs_percent = abs(price_diff_percent)
                 
-                # Используем разные форматы в зависимости от величины изменения
-                if abs_diff < 0.0001:
-                    diff_formatted = f"{sign}${abs_diff:.10f}"
-                elif abs_diff < 0.01:
+                # Форматируем дифференциалы цены, ограничивая два знака после запятой для процентов
+                if abs_diff < 0.01:
                     diff_formatted = f"{sign}${abs_diff:.6f}"
                 else:
                     diff_formatted = f"{sign}${abs_diff:,.2f}"
                 
-                # Форматирование процентов
-                if abs_percent < 0.0001:
-                    percent_formatted = f"{sign}{abs_percent:.10f}%"
-                elif abs_percent < 0.01:
-                    percent_formatted = f"{sign}{abs_percent:.6f}%"
-                else:
-                    percent_formatted = f"{sign}{abs_percent:.4f}%"
-                
-                # Проверка и принудительная коррекция при очень маленьких значениях
-                # Если разница меньше чем 0.000001, показываем фактическую разницу без округления
-                if abs_diff < 0.000001:
-                    diff_formatted = f"{sign}${price_diff:e}"  # Используем научную нотацию
-                if abs_percent < 0.000001:
-                    percent_formatted = f"{sign}{price_diff_percent:e}%"  # Научная нотация для процентов
+                # Всегда показываем два знака после запятой для процентов
+                percent_formatted = f"{sign}{abs(price_diff_percent):.2f}%"
                 
                 # Логирование для отладки
                 logger.debug(f"Price change: from {last_price} to {current_price} = {price_diff}")
