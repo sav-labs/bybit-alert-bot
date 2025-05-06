@@ -142,7 +142,7 @@ class UserKeyboard:
         
         # Change threshold button
         buttons.append([InlineKeyboardButton(
-            text="⚙️ Change Threshold", 
+            text="⚙️ Change Step", 
             callback_data=f"change_threshold:{alert_id}"
         )])
         
@@ -159,7 +159,7 @@ class UserKeyboard:
     
     @staticmethod
     def threshold_options(alert_id: int, symbol: str) -> InlineKeyboardMarkup:
-        """Threshold selection keyboard for existing alert."""
+        """Price step selection keyboard for existing alert."""
         buttons = []
         
         # Add predefined price multipliers

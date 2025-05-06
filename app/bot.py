@@ -31,19 +31,18 @@ async def alert_worker():
                 
                 # Определяем направление движения цены
                 is_price_up = current_price > last_price
-                direction_emoji = "🟢 🔼" if is_price_up else "🔴 🔽"
-                change_text = "increased" if is_price_up else "decreased"
+                direction_emoji = "📈" if is_price_up else "📉"
                 
-                # Форматируем значение изменения
+                # Форматируем значение изменения с учетом малых процентов
                 diff_formatted = f"+${abs(price_diff):,.2f}" if is_price_up else f"-${abs(price_diff):,.2f}"
-                percent_formatted = f"+{abs(price_diff_percent):.2f}%" if is_price_up else f"-{abs(price_diff_percent):.2f}%"
+                percent_formatted = f"+{abs(price_diff_percent):.4f}%" if is_price_up else f"-{abs(price_diff_percent):.4f}%"
                 
                 # Format message
                 message = (
-                    f"🔔 *Price Alert for {alert.symbol}*\n\n"
-                    f"{direction_emoji} Price has {change_text} to *${current_price:,.2f}*\n"
+                    f"🔔 *{alert.symbol}*\n"
+                    f"{direction_emoji} *${current_price:,.2f}*\n"
                     f"Change: *{diff_formatted}* ({percent_formatted})\n"
-                    f"Alert threshold: *${alert.price_multiplier:g}*"
+                    f"Alert step: *${alert.price_multiplier:g}*"
                 )
                 
                 try:

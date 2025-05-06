@@ -404,8 +404,8 @@ async def change_alert_threshold(callback: CallbackQuery):
         return
     
     await callback.message.edit_text(
-        f"Select new threshold for {alert.symbol} alert:\n"
-        f"Current threshold: ${alert.price_multiplier:g}",
+        f"Select new alert step for {alert.symbol}:\n"
+        f"Current step: ${alert.price_multiplier:g}",
         reply_markup=UserKeyboard.threshold_options(alert.id, alert.symbol)
     )
     await callback.answer()
@@ -421,7 +421,7 @@ async def update_alert_threshold(callback: CallbackQuery):
     success = await TokenAlertService.update_threshold(alert_id, new_threshold)
     
     if success:
-        await callback.answer(f"Threshold updated to ${new_threshold:g}")
+        await callback.answer(f"Alert step updated to ${new_threshold:g}")
         
         # Get updated alert
         alerts = await TokenAlertService.get_user_alerts(user_id)
@@ -437,7 +437,7 @@ async def update_alert_threshold(callback: CallbackQuery):
         else:
             await show_user_alerts(callback)
     else:
-        await callback.answer("Failed to update threshold")
+        await callback.answer("Failed to update alert step")
 
 @router.callback_query(F.data.startswith("custom_threshold:"))
 async def enter_custom_threshold(callback: CallbackQuery, state: FSMContext):
@@ -448,7 +448,7 @@ async def enter_custom_threshold(callback: CallbackQuery, state: FSMContext):
     await state.update_data(alert_id=alert_id)
     
     await callback.message.edit_text(
-        "Please enter a custom threshold value (e.g. 0.5, 1.25, 333):"
+        "Please enter a custom alert step value (e.g. 0.5, 1.25, 333):"
     )
     await callback.answer()
 
@@ -468,10 +468,10 @@ async def process_custom_threshold(message: Message, state: FSMContext):
     try:
         new_threshold = float(message.text.strip())
         if new_threshold <= 0:
-            raise ValueError("Threshold must be positive")
+            raise ValueError("Alert step must be positive")
     except ValueError:
         await message.answer(
-            "Invalid threshold value. Please enter a positive number (e.g. 0.5, 1.25, 333)."
+            "Invalid step value. Please enter a positive number (e.g. 0.5, 1.25, 333)."
         )
         return
     
@@ -486,19 +486,19 @@ async def process_custom_threshold(message: Message, state: FSMContext):
         
         if alert:
             await message.answer(
-                f"Threshold for {alert.symbol} alert updated to ${new_threshold:g}.\n\n"
+                f"Step for {alert.symbol} alert updated to ${new_threshold:g}.\n\n"
                 f"Alert options for {alert.symbol} (${alert.price_multiplier:g}):\n"
                 f"Status: {'Active' if alert.is_active else 'Disabled'}",
                 reply_markup=UserKeyboard.alert_options(alert.id, alert.is_active)
             )
         else:
             await message.answer(
-                f"Threshold updated to ${new_threshold:g}",
+                f"Alert step updated to ${new_threshold:g}",
                 reply_markup=UserKeyboard.dashboard_menu()
             )
     else:
         await message.answer(
-            "Failed to update threshold. Please try again later.",
+            "Failed to update alert step. Please try again later.",
             reply_markup=UserKeyboard.dashboard_menu()
         )
     
