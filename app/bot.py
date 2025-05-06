@@ -87,7 +87,7 @@ async def alert_worker():
                 
                 # Format message
                 message = (
-                    f"⚡️ *{alert.symbol}* ⚡️\n"
+                    f"*{alert.symbol}*\n"
                     f"{direction_emoji} *${current_price:,.2f}*\n"
                     f"Change: *{diff_formatted}* ({percent_formatted})\n"
                     f"Time since last alert: *{time_str}*\n"

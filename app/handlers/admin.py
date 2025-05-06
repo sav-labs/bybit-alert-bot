@@ -347,7 +347,7 @@ async def view_user_alerts(callback: CallbackQuery):
         for alert in alerts:
             status = "✅ Active" if alert.is_active else "❌ Disabled"
             price = f"${alert.price_multiplier:g}"
-            message_text += f"{status} | {alert.symbol} | Threshold: {price}\n"
+            message_text += f"{status} | {alert.symbol} | Step: {price}\n"
     
     await callback.message.edit_text(
         message_text,

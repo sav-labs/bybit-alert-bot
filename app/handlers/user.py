@@ -70,7 +70,7 @@ async def process_custom_token_input(message: Message, state: FSMContext):
     
     # Token exists, show price multiplier selection
     await message.answer(
-        f"Token {symbol} found! Now select the price change threshold you want to monitor:",
+        f"Token {symbol} found! Now select the price change step you want to monitor:",
         reply_markup=UserKeyboard.price_multiplier_select(symbol)
     )
     
@@ -93,7 +93,7 @@ async def process_symbol_input(message: Message, state: FSMContext):
     
     # Token exists, show price multiplier selection
     await message.answer(
-        f"Token {symbol} found! Now select the price change threshold you want to monitor:",
+        f"Token {symbol} found! Now select the price change step you want to monitor:",
         reply_markup=UserKeyboard.price_multiplier_select(symbol)
     )
     
@@ -126,7 +126,7 @@ async def check_token_message(message: Message, state: FSMContext):
     
     if is_valid:
         await message.answer(
-            f"Token {symbol} found! Now select the price change threshold you want to monitor:",
+            f"Token {symbol} found! Now select the price change step you want to monitor:",
             reply_markup=UserKeyboard.price_multiplier_select(symbol)
         )
     else:
@@ -152,7 +152,7 @@ async def set_price_multiplier(callback: CallbackQuery):
     if alert:
         logger.info(f"Successfully created alert for {symbol} (step: ${multiplier:g}) for user {user_id}")
         await callback.message.edit_text(
-            f"✅ Alert set for {symbol} with ${multiplier:g} threshold.\n\n"
+            f"✅ Alert set for {symbol} with ${multiplier:g} step.\n\n"
             f"You will be notified when the price crosses multiples of ${multiplier:g}.",
             reply_markup=UserKeyboard.dashboard_menu()
         )
@@ -180,7 +180,7 @@ async def show_user_alerts(callback: CallbackQuery):
         for alert in alerts:
             status = "✅ Active" if alert.is_active else "❌ Disabled"
             price = f"${alert.price_multiplier:g}"
-            message_text += f"{status} | {alert.symbol} | Threshold: {price}\n"
+            message_text += f"{status} | {alert.symbol} | Step: {price}\n"
     
     await callback.message.edit_text(
         message_text,
@@ -398,7 +398,7 @@ async def select_token(callback: CallbackQuery):
     symbol = callback.data.split(":")[1]
     
     await callback.message.edit_text(
-        f"You selected {symbol}. Now choose the price threshold for alerts:",
+        f"You selected {symbol}. Now choose the price step for alerts:",
         reply_markup=UserKeyboard.price_multiplier_select(symbol)
     )
     await callback.answer()
