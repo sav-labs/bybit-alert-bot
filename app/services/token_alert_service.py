@@ -181,15 +181,16 @@ class TokenAlertService:
                 # Проверяем, что last_alert_time установлен
                 try:
                     last_time = alert.last_alert_time
-                    if last_time is None:
-                        alert.last_alert_time = current_time
+                    if last_time is None or last_time <= 0:
+                        alert.last_alert_time = current_time - 3600  # Устанавливаем время на час назад для первого алерта
                         logger.warning(f"Fixed missing last_alert_time for alert ID {alert.id} ({alert.symbol})")
                 except AttributeError:
-                    alert.last_alert_time = current_time
+                    alert.last_alert_time = current_time - 3600  # Устанавливаем время на час назад для первого алерта
                     logger.warning(f"Added missing last_alert_time attribute for alert ID {alert.id} ({alert.symbol})")
             
             # Выполняем коммит, если были исправления
             session.commit()
+            logger.debug("Fixed any missing last_alert_time values")
             
             # Group alerts by symbol to minimize API calls
             symbols = set(alert.symbol for alert in active_alerts)
@@ -253,6 +254,10 @@ class TokenAlertService:
                     alert.last_alert_price = current_price
                     alert.last_alert_time = current_time
                     logger.debug(f"Updated last_alert_time for {alert.symbol} to {current_time}")
+                    
+                    # Сразу коммитим изменения для этого алерта, чтобы гарантировать сохранение времени
+                    session.commit()
+                    logger.debug(f"Committed time update for alert {alert.id}")
             
             # Выполняем явный коммит для сохранения изменений
             session.commit()
