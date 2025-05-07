@@ -20,23 +20,18 @@ def format_time_interval(seconds):
     if seconds < 0:
         return "N/A"
     elif seconds < 1:  # Если меньше секунды
-        # Особый случай, возвращаем "сейчас" вместо миллисекунд
+        # Особый случай, возвращаем "только что" вместо миллисекунд
         return "just now"
     
     # Для очень маленьких значений (до 3 секунд) возвращаем "несколько секунд"
     if seconds < 3:
-        return "few seconds ago"
+        return "few seconds"
         
     # Для значений менее минуты (но более 3 секунд)
     if seconds < 60:
-        # Если точное значение меньше 10 или не делится на 5 (для естественности)
-        if seconds < 10 or seconds % 5 != 0:
-            s = int(seconds)
-            return f"{s}s ago"
-        else:
-            # Округляем до ближайших 5 секунд для более крупных значений
-            s = int(seconds) // 5 * 5
-            return f"{s}s ago"
+        # Показываем точное количество секунд
+        s = int(seconds)
+        return f"{s}s"
     
     # Для времени больше минуты делаем более разнообразное форматирование
     total_seconds = int(seconds)
@@ -45,25 +40,21 @@ def format_time_interval(seconds):
     
     # Для значений более часа
     if hours > 0:
-        # Разнообразие форматов для более естественного отображения
-        if minutes == 0:
-            return f"{hours}h ago"
-        elif seconds == 0 or total_seconds > 7200:  # Более 2 часов без секунд
-            return f"{hours}h {minutes}m ago"
+        # Простой формат часы и минуты
+        if seconds == 0:
+            return f"{hours}h {minutes}m"
         else:
-            return f"{hours}h {minutes}m {seconds}s ago"
+            return f"{hours}h {minutes}m {seconds}s"
     
     # Для значений более минуты, но менее часа
     if minutes > 0:
-        if seconds == 0 or minutes > 10:
-            # Для больших значений минут опускаем секунды
-            return f"{minutes}m ago"
+        if seconds == 0:
+            return f"{minutes}m"
         else:
-            # Для значений менее 10 минут показываем секунды
-            return f"{minutes}m {seconds}s ago"
+            return f"{minutes}m {seconds}s"
     
     # Если ничего не сработало, возвращаем просто секунды
-    return f"{total_seconds}s ago"
+    return f"{total_seconds}s"
 
 async def alert_worker():
     """Separate worker to check prices and send alerts."""

@@ -161,7 +161,6 @@ class TokenAlertService:
         session = get_session()
         alerts_to_send = []
         current_time = time.time()  # Текущее время в секундах
-        last_check_times = {}  # Для хранения времени последней проверки по ID алерта
         
         try:
             # Get all active alerts
@@ -179,11 +178,14 @@ class TokenAlertService:
                 _ = alert.price_multiplier
                 _ = alert.last_alert_price
                 _ = alert.user_id
-                # Сохраняем текущее last_alert_time в кэше
+                # Проверяем last_alert_time для инициализации, если потребуется
                 try:
-                    last_check_times[alert.id] = alert.last_alert_time
+                    if alert.last_alert_time is None:
+                        alert.last_alert_time = current_time - 60  # По умолчанию 1 минуту назад
+                        session.commit()
                 except (AttributeError, TypeError):
-                    last_check_times[alert.id] = current_time - 60  # Значение по умолчанию
+                    alert.last_alert_time = current_time - 60
+                    session.commit()
             
             # Group alerts by symbol to minimize API calls
             symbols = set(alert.symbol for alert in active_alerts)
@@ -208,50 +210,23 @@ class TokenAlertService:
                 previous_price = alert.last_alert_price  # Запоминаем предыдущую цену
                 price_diff = abs(current_price - previous_price)
                 
+                # Используем чистое значение last_alert_time без модификаций
+                last_alert_time = alert.last_alert_time
+                
+                # Если last_alert_time не инициализирован, инициализируем его
+                if last_alert_time is None or last_alert_time <= 0:
+                    logger.warning(f"Alert {alert.id} for {alert.symbol} has invalid last_alert_time, initializing")
+                    last_alert_time = current_time - 60
+                    alert.last_alert_time = last_alert_time
+                    session.commit()
+                
+                # Вычисляем ФАКТИЧЕСКОЕ прошедшее время без модификаций
+                time_passed = current_time - last_alert_time
+                
                 logger.debug(f"Checking alert for {alert.symbol} (user: {alert.user_id}): current=${current_price:,.2f}, prev=${previous_price:,.2f}, diff=${price_diff:,.2f}, step=${alert.price_multiplier:g}")
                 
                 # Проверяем, нужно ли отправлять уведомление
                 should_send = TokenAlertService.should_alert(current_price, previous_price, alert.price_multiplier)
-                
-                # Обрабатываем случай с last_alert_time
-                try:
-                    last_alert_time = last_check_times.get(alert.id) or alert.last_alert_time
-                    
-                    # Если атрибут не существует, попытаемся получить его напрямую
-                    if last_alert_time is None:
-                        logger.warning(f"Alert {alert.id} for {alert.symbol} has None last_alert_time, initializing")
-                        last_alert_time = current_time - 60  # Устанавливаем время 1 минуту назад
-                        alert.last_alert_time = last_alert_time
-                        session.commit()
-                    
-                except (AttributeError, TypeError) as e:
-                    logger.warning(f"Alert {alert.id} for {alert.symbol} missing last_alert_time: {e}, initializing")
-                    last_alert_time = current_time - 60  # Устанавливаем время 1 минуту назад
-                    alert.last_alert_time = last_alert_time
-                    session.commit()
-                
-                # Вычисляем прошедшее время
-                time_passed = current_time - last_alert_time
-                
-                # Проверяем валидность времени
-                if time_passed < 0:
-                    logger.warning(f"Negative time passed for alert {alert.id}: {time_passed}s, resetting to MIN interval")
-                    time_passed = max(POLLING_INTERVAL * 0.8, 8)  # Не менее 8 секунд
-                elif time_passed < 5 and last_alert_time > 0:
-                    # Если время слишком маленькое, но не 0
-                    logger.debug(f"Time too small for alert {alert.id}: {time_passed}s, adjusting")
-                    time_passed = max(POLLING_INTERVAL * 0.8, 8)  # Не менее 8 секунд
-                
-                # Добавляем уникальную вариативность для каждого алерта на основе ID
-                # Это делает время уникальным и более естественным
-                time_variety = 0.7 + (((alert.id * 17) % 7) / 10)  # От 0.7 до 1.3 (30% вариации)
-                time_passed = time_passed * time_variety
-                
-                # Добавляем немного случайности в зависимости от времени суток
-                day_factor = int((current_time / 3600) % 24)  # Час дня 0-23
-                time_passed += (day_factor % 3)  # Добавляем 0-2 секунды
-                
-                logger.debug(f"Applied time variety factor {time_variety:.2f} for alert {alert.id}, final time: {time_passed:.1f}s")
                 
                 # Только при отправке уведомления добавляем в список для отправки
                 if should_send:
@@ -267,11 +242,8 @@ class TokenAlertService:
                     
                     # ВАЖНО: обновляем last_alert_price и last_alert_time ТОЛЬКО при отправке уведомления
                     alert.last_alert_price = current_price
-                    alert.last_alert_time = current_time
+                    alert.last_alert_time = current_time  # Текущее время без модификаций
                     logger.debug(f"Updated last_alert_time for {alert.symbol} to {current_time} (real current time)")
-                    
-                    # Также обновляем кэш
-                    last_check_times[alert.id] = current_time
             
             # Выполняем явный коммит для сохранения изменений
             session.commit()
