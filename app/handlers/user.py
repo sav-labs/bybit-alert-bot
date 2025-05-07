@@ -486,47 +486,78 @@ async def process_custom_threshold(message: Message, state: FSMContext):
     # Get state data
     state_data = await state.get_data()
     alert_id = state_data.get("alert_id")
+    token = state_data.get("token")
     
-    if not alert_id:
-        await message.answer("An error occurred. Please try again.")
-        await state.clear()
-        return
+    user_id = message.from_user.id
+    logger.info(f"User {user_id} entered custom threshold: {message.text}")
     
     # Try to parse the threshold
     try:
-        new_threshold = float(message.text.strip())
+        text_value = message.text.strip()
+        new_threshold = float(text_value)
         if new_threshold <= 0:
             raise ValueError("Alert step must be positive")
-    except ValueError:
+        
+        logger.info(f"Parsed threshold value: {new_threshold}")
+    except ValueError as e:
+        logger.warning(f"Invalid threshold value from user {user_id}: {message.text} - {e}")
         await message.answer(
-            "Invalid step value. Please enter a positive number (e.g. 0.5, 1.25, 333)."
+            "Invalid step value. Please enter a positive number (e.g. 0.5, 0.2, 1.25, 333)."
         )
         return
     
-    # Update threshold
-    success = await TokenAlertService.update_threshold(alert_id, new_threshold)
-    
-    if success:
-        # Get updated alert info
-        user_id = message.from_user.id
-        alerts = await TokenAlertService.get_user_alerts(user_id)
-        alert = next((a for a in alerts if a.id == alert_id), None)
+    # Если у нас есть токен, то создаем новый алерт
+    if token and not alert_id:
+        logger.info(f"Creating new alert for token {token} with step {new_threshold}")
+        alert = await TokenAlertService.add_alert(user_id, token, new_threshold)
         
         if alert:
+            logger.info(f"Successfully created alert for {token} with step ${new_threshold:g}")
             await message.answer(
-                f"Step for {alert.symbol} alert updated to ${new_threshold:g}.\n\n"
-                f"Alert options for {alert.symbol} (${alert.price_multiplier:g}):\n"
-                f"Status: {'Active' if alert.is_active else 'Disabled'}",
-                reply_markup=UserKeyboard.alert_options(alert.id, alert.is_active)
+                f"✅ Alert set for {token} with ${new_threshold:g} step.\n\n"
+                f"You will be notified when the price crosses multiples of ${new_threshold:g}.",
+                reply_markup=UserKeyboard.dashboard_menu()
             )
         else:
+            logger.error(f"Failed to create alert for {token} with step ${new_threshold:g}")
             await message.answer(
-                f"Alert step updated to ${new_threshold:g}",
+                f"❌ Failed to set alert for {token}. Please try again later.",
+                reply_markup=UserKeyboard.dashboard_menu()
+            )
+    # Если у нас есть ID алерта, то обновляем существующий
+    elif alert_id:
+        logger.info(f"Updating alert {alert_id} with new step {new_threshold}")
+        # Update threshold
+        success = await TokenAlertService.update_threshold(alert_id, new_threshold)
+        
+        if success:
+            # Get updated alert info
+            alerts = await TokenAlertService.get_user_alerts(user_id)
+            alert = next((a for a in alerts if a.id == alert_id), None)
+            
+            if alert:
+                logger.info(f"Successfully updated alert for {alert.symbol} with step ${new_threshold:g}")
+                await message.answer(
+                    f"Step for {alert.symbol} alert updated to ${new_threshold:g}.\n\n"
+                    f"Alert options for {alert.symbol} (${alert.price_multiplier:g}):\n"
+                    f"Status: {'Active' if alert.is_active else 'Disabled'}",
+                    reply_markup=UserKeyboard.alert_options(alert.id, alert.is_active)
+                )
+            else:
+                await message.answer(
+                    f"Alert step updated to ${new_threshold:g}",
+                    reply_markup=UserKeyboard.dashboard_menu()
+                )
+        else:
+            logger.error(f"Failed to update alert {alert_id} with step ${new_threshold:g}")
+            await message.answer(
+                "Failed to update alert step. Please try again later.",
                 reply_markup=UserKeyboard.dashboard_menu()
             )
     else:
+        logger.error(f"Neither token nor alert_id available in state for user {user_id}")
         await message.answer(
-            "Failed to update alert step. Please try again later.",
+            "An error occurred. Please try again from the beginning.",
             reply_markup=UserKeyboard.dashboard_menu()
         )
     
