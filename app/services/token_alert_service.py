@@ -62,17 +62,24 @@ class TokenAlertService:
             # Get current price
             current_price = await BybitService.get_token_price(symbol)
             
-            # Create new alert
+            # Create new alert without last_alert_time parameter
             alert = TokenAlert(
                 user_id=user_id,
                 symbol=symbol,
                 price_multiplier=price_multiplier,
-                last_alert_price=current_price,
-                last_alert_time=time.time()  # используем текущее время без смещений
+                last_alert_price=current_price
             )
             
             session.add(alert)
             session.commit()
+            
+            # After commit, set last_alert_time manually if needed
+            try:
+                alert.last_alert_time = time.time()
+                session.commit()
+                logger.debug(f"Set last_alert_time for new alert {alert.id} to {alert.last_alert_time}")
+            except Exception as e:
+                logger.warning(f"Could not set last_alert_time for alert: {e}")
             
             # Загружаем необходимые атрибуты
             _ = alert.id
@@ -212,7 +219,14 @@ class TokenAlertService:
                     
                     # ВАЖНО: обновляем last_alert_price и last_alert_time ТОЛЬКО при отправке уведомления
                     alert.last_alert_price = current_price
-                    alert.last_alert_time = current_time  # Текущее время без модификаций
+                    # Пробуем обновить last_alert_time, если он есть
+                    try:
+                        if hasattr(alert, 'last_alert_time'):
+                            alert.last_alert_time = current_time
+                            logger.debug(f"Updated last_alert_time for {alert.symbol} to {current_time}")
+                    except Exception as e:
+                        logger.warning(f"Could not update last_alert_time for alert {alert.id}: {e}")
+                    
                     logger.debug(f"Updated last_alert_price for {alert.symbol} to ${current_price:,.2f}")
             
             # Выполняем явный коммит для сохранения изменений
@@ -249,8 +263,12 @@ class TokenAlertService:
                 # Обновляем last_alert_price, чтобы расчет начался с новой точки
                 if current_price:
                     alert.last_alert_price = current_price
-                    # Обновляем время последнего алерта без смещений
-                    alert.last_alert_time = time.time()
+                    # Пробуем обновить время последнего алерта, если оно есть
+                    try:
+                        if hasattr(alert, 'last_alert_time'):
+                            alert.last_alert_time = time.time()
+                    except Exception as e:
+                        logger.warning(f"Could not update last_alert_time for alert {alert_id}: {e}")
                 
                 session.commit()
                 return True
