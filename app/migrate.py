@@ -19,8 +19,8 @@ def migrate_add_last_alert_time():
         column_names = [col[1] for col in columns]
         
         current_time = time.time()
-        # Устанавливаем время на POLLING_INTERVAL секунд назад для существующих записей
-        past_time = current_time - POLLING_INTERVAL
+        # Устанавливаем текущее время без смещения для существующих записей
+        past_time = current_time
         
         if 'last_alert_time' not in column_names:
             # Add column with default value of one hour ago
@@ -41,19 +41,21 @@ def migrate_add_last_alert_time():
             conn.commit()
             logger.info(f"Fixed {null_count} records with NULL or zero last_alert_time")
             
-        # Получим все алерты и обновим их last_alert_time, чтобы иметь разное время для каждого
+        # Получим все алерты и обновим их last_alert_time с реальным временем, но с разницей для разных ID
         cursor.execute("SELECT id FROM token_alerts")
         alerts = cursor.fetchall()
         
+        # Для миграции устанавливаем разное время для тестирования реального отображения времени
         for i, alert in enumerate(alerts):
             alert_id = alert[0]
-            # Устанавливаем разные временные метки для разных алертов
-            new_time = past_time - (i * 60)  # Разница в 1 минуту между алертами
+            # Устанавливаем временные метки с интервалом 30 секунд
+            spread_factor = i * 30  # 30 секунд разницы между алертами
+            new_time = current_time - spread_factor
             cursor.execute("UPDATE token_alerts SET last_alert_time = ? WHERE id = ?", (new_time, alert_id))
-            logger.info(f"Updated alert ID {alert_id} with unique last_alert_time: {new_time}")
+            logger.info(f"Updated alert ID {alert_id} with time: {new_time} ({spread_factor}s ago)")
         
         conn.commit()
-        logger.info(f"Updated all alerts with unique last_alert_time values")
+        logger.info(f"Updated all alerts with proper time values")
         
         return True
     except Exception as e:

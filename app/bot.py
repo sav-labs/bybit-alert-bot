@@ -49,18 +49,24 @@ async def alert_worker():
                 
                 # Calculate price change percentage
                 if previous_price > 0:
-                    change_pct = (current_price - previous_price) / previous_price * 100
-                    direction = "🟢" if change_pct >= 0 else "🔴"
+                    price_diff = current_price - previous_price
+                    change_pct = price_diff / previous_price * 100
+                    direction = "🟢" if price_diff >= 0 else "🔴"
+                    
+                    # Добавляем знаки "+" и "-" перед изменением
+                    sign = "+" if price_diff >= 0 else "-"
+                    abs_diff = abs(price_diff)
+                    formatted_change = f"{sign}${abs_diff:,.2f} ({sign}{abs(change_pct):.2f}%)"
                 else:
-                    change_pct = 0
                     direction = "🟢"
+                    formatted_change = "$0.00 (0.00%)"
                 
                 # Format message
                 message = (
                     f"{direction} <b>{alert.symbol}</b>\n\n"
                     f"Current Price: ${current_price:,.2f}\n"
                     f"Previous Price: ${previous_price:,.2f}\n"
-                    f"Change: ${abs(current_price - previous_price):,.2f} ({change_pct:.2f}%)\n"
+                    f"Change: {formatted_change}\n"
                     f"Time since last alert: {time_str}\n\n"
                     f"Alert Step: ${alert.price_multiplier:g}"
                 )
