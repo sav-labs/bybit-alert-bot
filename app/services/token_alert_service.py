@@ -193,13 +193,20 @@ class TokenAlertService:
                 else:
                     logger.warning(f"Failed to fetch price for {symbol}")
             
-            # Check each alert
+            # First, find all alerts that should be triggered
+            alerts_to_trigger = []
             for alert in active_alerts:
                 if alert.symbol not in prices:
                     continue
                 
                 current_price = prices[alert.symbol]
                 previous_price = alert.last_alert_price  # Запоминаем предыдущую цену
+                
+                if previous_price is None:
+                    # Если предыдущей цены нет, устанавливаем текущую и пропускаем
+                    alert.last_alert_price = current_price
+                    continue
+                
                 price_diff = abs(current_price - previous_price)
                 
                 logger.debug(f"Checking alert for {alert.symbol} (user: {alert.user_id}): current=${current_price:,.2f}, prev=${previous_price:,.2f}, diff=${price_diff:,.2f}, step=${alert.price_multiplier:g}")
@@ -207,27 +214,32 @@ class TokenAlertService:
                 # Проверяем, нужно ли отправлять уведомление
                 should_send = TokenAlertService.should_alert(current_price, previous_price, alert.price_multiplier)
                 
-                # Только при отправке уведомления добавляем в список для отправки
                 if should_send:
                     logger.debug(f"Alert condition triggered for {alert.symbol}: price change (${price_diff:,.2f}) >= step (${alert.price_multiplier:g})")
-                    
-                    alerts_to_send.append({
+                    alerts_to_trigger.append({
                         "alert": alert,
                         "current_price": current_price,
                         "previous_price": previous_price
                     })
-                    
-                    # ВАЖНО: обновляем last_alert_price и last_alert_time ТОЛЬКО при отправке уведомления
-                    alert.last_alert_price = current_price
-                    # Пробуем обновить last_alert_time, если он есть
-                    try:
-                        if hasattr(alert, 'last_alert_time'):
-                            alert.last_alert_time = current_time
-                            logger.debug(f"Updated last_alert_time for {alert.symbol} to {current_time}")
-                    except Exception as e:
-                        logger.warning(f"Could not update last_alert_time for alert {alert.id}: {e}")
-                    
-                    logger.debug(f"Updated last_alert_price for {alert.symbol} to ${current_price:,.2f}")
+            
+            # Now update last_alert_price for all alerts that need to be triggered
+            # and prepare them for sending
+            for alert_data in alerts_to_trigger:
+                alert = alert_data["alert"]
+                current_price = alert_data["current_price"]
+                
+                # ВАЖНО: обновляем last_alert_price и last_alert_time ТОЛЬКО при отправке уведомления
+                alert.last_alert_price = current_price
+                # Пробуем обновить last_alert_time, если он есть
+                try:
+                    if hasattr(alert, 'last_alert_time'):
+                        alert.last_alert_time = current_time
+                        logger.debug(f"Updated last_alert_time for {alert.symbol} to {current_time}")
+                except Exception as e:
+                    logger.warning(f"Could not update last_alert_time for alert {alert.id}: {e}")
+                
+                logger.debug(f"Updated last_alert_price for {alert.symbol} to ${current_price:,.2f}")
+                alerts_to_send.append(alert_data)
             
             # Выполняем явный коммит для сохранения изменений
             session.commit()
