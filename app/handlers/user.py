@@ -18,6 +18,7 @@ class AddAlertStates(StatesGroup):
     waiting_for_symbol = State()
     waiting_for_custom_token = State()
     waiting_for_custom_threshold = State()
+    waiting_for_price_step = State()
 
 @router.callback_query(F.data == "add_alert")
 async def add_alert_start(callback: CallbackQuery, state: FSMContext):
@@ -98,11 +99,66 @@ async def process_symbol_input(message: Message, state: FSMContext):
     await state.update_data(token=token)
     
     # Move to the next step (price multiplier)
-    await state.set_state(AddAlertStates.waiting_for_custom_threshold)
+    await state.set_state(AddAlertStates.waiting_for_price_step)
     await message.answer(
         f"✅ Token '{token}' found on Bybit.\n\n"
         "Now, please enter the price change step for alert (e.g., 1000 for BTC, 10 for SOL, etc.)."
     )
+
+# Новое состояние для ожидания ввода шага цены после нахождения токена
+@router.message(AddAlertStates.waiting_for_price_step)
+async def process_price_step_input(message: Message, state: FSMContext):
+    """Process price step input after finding a token."""
+    user_id = message.from_user.id
+    step_value = message.text.strip()
+    logger.info(f"User {user_id} entered price step: {step_value}")
+    
+    # Получаем данные из состояния
+    state_data = await state.get_data()
+    token = state_data.get("token")
+    
+    if not token:
+        logger.error(f"No token found in state for user {user_id}")
+        await message.answer(
+            "An error occurred. Please try again from the beginning.",
+            reply_markup=UserKeyboard.dashboard_menu()
+        )
+        await state.clear()
+        return
+    
+    # Обрабатываем значение шага
+    try:
+        price_step = float(step_value)
+        if price_step <= 0:
+            raise ValueError("Price step must be positive")
+        
+        logger.info(f"User {user_id} setting up alert for {token} with step ${price_step:g}")
+        
+        # Создаем алерт
+        alert = await TokenAlertService.add_alert(user_id, token, price_step)
+        
+        if alert:
+            logger.info(f"Successfully created alert for {token} with step ${price_step:g} for user {user_id}")
+            await message.answer(
+                f"✅ Alert set for {token} with ${price_step:g} step.\n\n"
+                f"You will be notified when the price crosses multiples of ${price_step:g}.",
+                reply_markup=UserKeyboard.dashboard_menu()
+            )
+        else:
+            logger.error(f"Failed to create alert for {token} with step ${price_step:g} for user {user_id}")
+            await message.answer(
+                f"❌ Failed to set alert for {token}. Please try again later.",
+                reply_markup=UserKeyboard.dashboard_menu()
+            )
+    except ValueError as e:
+        logger.warning(f"Invalid price step from user {user_id}: {step_value} - {e}")
+        await message.answer(
+            "Invalid step value. Please enter a positive number (e.g. 0.5, 0.2, 1, 10, etc.)."
+        )
+        return
+    
+    # Clear state
+    await state.clear()
 
 # Добавим обработчик для проверки, является ли сообщение токеном
 @router.message(lambda message: TOKEN_PATTERN.match(message.text.strip().upper()))
