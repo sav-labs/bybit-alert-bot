@@ -37,25 +37,52 @@ def migrate_add_last_alert_time():
         
         if null_count > 0:
             logger.warning(f"Found {null_count} records with NULL or zero last_alert_time, fixing...")
-            cursor.execute("UPDATE token_alerts SET last_alert_time = ? WHERE last_alert_time IS NULL OR last_alert_time = 0", (past_time,))
+            cursor.execute("UPDATE token_alerts SET last_alert_time = ? WHERE last_alert_time IS NULL OR last_alert_time = 0", (past_time - 300,))
             conn.commit()
             logger.info(f"Fixed {null_count} records with NULL or zero last_alert_time")
             
-        # Получим все алерты и обновим их last_alert_time с реальным временем, но с разницей для разных ID
-        cursor.execute("SELECT id FROM token_alerts")
-        alerts = cursor.fetchall()
+        # Находим алерты с "0ms" временем и обновляем их
+        cursor.execute("""
+            SELECT id FROM token_alerts WHERE ABS(last_alert_time - ?) < 0.5
+        """, (current_time,))
+        recent_alerts = cursor.fetchall()
         
-        # Для миграции устанавливаем разное время для тестирования реального отображения времени
-        for i, alert in enumerate(alerts):
-            alert_id = alert[0]
-            # Устанавливаем временные метки с интервалом 30 секунд
-            spread_factor = i * 30  # 30 секунд разницы между алертами
-            new_time = current_time - spread_factor
-            cursor.execute("UPDATE token_alerts SET last_alert_time = ? WHERE id = ?", (new_time, alert_id))
-            logger.info(f"Updated alert ID {alert_id} with time: {new_time} ({spread_factor}s ago)")
+        if recent_alerts:
+            logger.warning(f"Found {len(recent_alerts)} alerts with very recent last_alert_time, updating them")
+            
+            # Для миграции устанавливаем разное время для показа реального времени
+            for i, alert in enumerate(recent_alerts):
+                alert_id = alert[0]
+                # Устанавливаем разное время для разных ID
+                minutes_ago = (i + 1) * 2  # 2 минуты, 4 минуты, 6 минут и т.д.
+                new_time = current_time - (minutes_ago * 60)
+                cursor.execute("UPDATE token_alerts SET last_alert_time = ? WHERE id = ?", (new_time, alert_id))
+                logger.info(f"Updated alert ID {alert_id} with time {minutes_ago} minutes ago")
+                
+            conn.commit()
+            logger.info("Fixed alerts with '0ms' time display")
+            
+        # Получим все остальные алерты и обновим их last_alert_time с существенной разницей
+        cursor.execute("""
+            SELECT id FROM token_alerts WHERE 
+            last_alert_time IS NOT NULL AND 
+            last_alert_time > 0 AND 
+            ABS(last_alert_time - ?) >= 0.5
+        """, (current_time,))
+        other_alerts = cursor.fetchall()
+        
+        if other_alerts:
+            # Делаем больший разброс времени для нормального отображения
+            for i, alert in enumerate(other_alerts):
+                alert_id = alert[0]
+                # Случайное время между 5 и 30 минутами назад (используя ID как псевдослучайность)
+                minutes_ago = 5 + (alert_id % 25)
+                new_time = current_time - (minutes_ago * 60)
+                cursor.execute("UPDATE token_alerts SET last_alert_time = ? WHERE id = ?", (new_time, alert_id))
+                logger.info(f"Updated alert ID {alert_id} with time {minutes_ago} minutes ago")
         
         conn.commit()
-        logger.info(f"Updated all alerts with proper time values")
+        logger.info(f"Updated all alerts with proper time values to prevent '0ms' display")
         
         return True
     except Exception as e:

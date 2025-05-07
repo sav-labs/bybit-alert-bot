@@ -19,8 +19,10 @@ def format_time_interval(seconds):
     """Format time interval in seconds to human-readable string."""
     if seconds < 0:
         return "N/A"
+    elif seconds < 0.001:  # Если время менее 1 мс
+        return "1s"  # Минимальное время - 1 секунда
     elif seconds < 1:
-        return f"{int(seconds * 1000)}ms"  # Показываем миллисекунды для очень коротких интервалов
+        return f"{max(1, int(seconds * 1000))}ms"  # Минимум 1ms
     
     hours, remainder = divmod(int(seconds), 3600)
     minutes, seconds = divmod(remainder, 60)

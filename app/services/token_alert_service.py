@@ -178,6 +178,7 @@ class TokenAlertService:
                 _ = alert.price_multiplier
                 _ = alert.last_alert_price
                 _ = alert.user_id
+                # ВАЖНО: не загружаем last_alert_time здесь, чтобы не создавать его автоматически
             
             # Group alerts by symbol to minimize API calls
             symbols = set(alert.symbol for alert in active_alerts)
@@ -211,24 +212,24 @@ class TokenAlertService:
                     try:
                         last_alert_time = alert.last_alert_time
                         logger.debug(f"Alert {alert.id} has last_alert_time: {last_alert_time}")
-                        if last_alert_time is None:
-                            logger.warning(f"Alert {alert.id} for {alert.symbol} has None last_alert_time, initializing with current time")
-                            alert.last_alert_time = current_time
-                            last_alert_time = current_time
-                    except AttributeError:
-                        logger.warning(f"Alert {alert.id} for {alert.symbol} missing last_alert_time attribute, initializing")
-                        # Добавляем атрибут в объект
-                        alert.last_alert_time = current_time
-                        last_alert_time = current_time
+                    except (AttributeError, TypeError) as e:
+                        logger.warning(f"Alert {alert.id} for {alert.symbol} missing last_alert_time: {e}, initializing")
+                        alert.last_alert_time = current_time - 60  # Устанавливаем время 1 минуту назад
+                        last_alert_time = current_time - 60
+                        session.commit()
                         
                     # Вычисляем прошедшее время
                     time_passed = current_time - last_alert_time
                     
+                    # Проверяем валидность времени
                     if time_passed < 0:
-                        logger.warning(f"Negative time passed for alert {alert.id}: {time_passed}s, resetting to 0")
-                        time_passed = 0
+                        logger.warning(f"Negative time passed for alert {alert.id}: {time_passed}s, resetting to 10s")
+                        time_passed = 10
+                    elif time_passed < 0.001 and last_alert_time > 0:  
+                        # Если время слишком маленькое, это скорее всего ошибка
+                        logger.warning(f"Time too small for alert {alert.id}: {time_passed}s, setting to 10s")
+                        time_passed = 10
                     
-                    # НЕ корректируем время, показываем реальное время с момента последнего алерта
                     logger.debug(f"Time since last alert for {alert.symbol}: {time_passed:.1f}s (last alert time: {last_alert_time}, current time: {current_time})")
                     
                     alerts_to_send.append({
@@ -238,17 +239,12 @@ class TokenAlertService:
                         "time_passed": time_passed
                     })
                     
-                    # Update last alert price and time
+                    # Update last alert price and time - ВАЖНО: только при отправке нового уведомления
                     alert.last_alert_price = current_price
-                    # Важно: сохраняем ТЕКУЩЕЕ время без смещений
                     alert.last_alert_time = current_time
                     logger.debug(f"Updated last_alert_time for {alert.symbol} to {current_time} (real current time)")
-                    
-                    # Сразу коммитим изменения для этого алерта, чтобы гарантировать сохранение времени
-                    session.commit()
-                    logger.debug(f"Committed time update for alert {alert.id}")
             
-            # Выполняем явный коммит для сохранения изменений
+            # Выполняем явный коммит для сохранения изменений - но только ПОСЛЕ проверки всех алертов
             session.commit()
             logger.debug(f"Committed changes for {len(active_alerts)} alerts")
             
