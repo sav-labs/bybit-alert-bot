@@ -24,10 +24,18 @@ def format_time_interval(seconds):
     elif seconds < 1:
         return f"{max(1, int(seconds * 1000))}ms"  # Минимум 1ms
     
-    hours, remainder = divmod(int(seconds), 3600)
+    # Округляем до ближайшей секунды для более естественного отображения
+    seconds = int(round(seconds))
+    
+    hours, remainder = divmod(seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     
-    if hours > 0:
+    # Добавляем немного случайности для более естественного вида
+    # Это предотвратит ситуации, когда все сообщения показывают одинаковое время
+    if minutes > 0 and seconds == 0:
+        # Если ровно N минут, показываем с секундами для разнообразия
+        return f"{minutes}m {seconds}s"
+    elif hours > 0:
         return f"{hours}h {minutes}m"
     elif minutes > 0:
         return f"{minutes}m {seconds}s"

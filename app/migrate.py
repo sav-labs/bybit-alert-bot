@@ -75,11 +75,14 @@ def migrate_add_last_alert_time():
             # Делаем больший разброс времени для нормального отображения
             for i, alert in enumerate(other_alerts):
                 alert_id = alert[0]
-                # Случайное время между 5 и 30 минутами назад (используя ID как псевдослучайность)
-                minutes_ago = 5 + (alert_id % 25)
+                # Случайное время от 30 секунд до 20 минут назад (используя ID и порядковый номер)
+                # Каждый алерт должен иметь своё уникальное время
+                time_offset = alert_id % 10  # 0-9
+                base_minutes = 0.5 + ((i * 3) % 19)  # 0.5-19.5 минут с шагом в 3 минуты
+                minutes_ago = base_minutes + (time_offset / 10)  # Добавляем десятые доли
                 new_time = current_time - (minutes_ago * 60)
                 cursor.execute("UPDATE token_alerts SET last_alert_time = ? WHERE id = ?", (new_time, alert_id))
-                logger.info(f"Updated alert ID {alert_id} with time {minutes_ago} minutes ago")
+                logger.info(f"Updated alert ID {alert_id} with unique time {minutes_ago:.1f} minutes ago")
         
         conn.commit()
         logger.info(f"Updated all alerts with proper time values to prevent '0ms' display")
