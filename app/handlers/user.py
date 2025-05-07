@@ -96,14 +96,16 @@ async def process_symbol_input(message: Message, state: FSMContext):
         return
     
     logger.info(f"User {user_id} entered valid token: {token}")
-    await state.update_data(token=token)
     
-    # Move to the next step (price multiplier)
-    await state.set_state(AddAlertStates.waiting_for_price_step)
+    # Token exists, show price multiplier selection keyboard
     await message.answer(
         f"✅ Token '{token}' found on Bybit.\n\n"
-        "Now, please enter the price change step for alert (e.g., 1000 for BTC, 10 for SOL, etc.)."
+        "Now choose the price change step for alerts:",
+        reply_markup=UserKeyboard.price_multiplier_select(token)
     )
+    
+    # Clear state since we're using buttons now
+    await state.clear()
 
 # Новое состояние для ожидания ввода шага цены после нахождения токена
 @router.message(AddAlertStates.waiting_for_price_step)
