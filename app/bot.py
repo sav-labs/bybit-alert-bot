@@ -66,10 +66,6 @@ async def alert_worker():
                 alert = alert_data["alert"]
                 current_price = alert_data["current_price"]
                 previous_price = alert_data["previous_price"]
-                time_passed = alert_data["time_passed"]
-                
-                # Format time passed in a human-readable way
-                time_str = format_time_interval(time_passed)
                 
                 # Calculate price change percentage
                 if previous_price > 0:
@@ -85,13 +81,12 @@ async def alert_worker():
                     direction = "🟢"
                     formatted_change = "$0.00 (0.00%)"
                 
-                # Format message
+                # Format message without time since last alert
                 message = (
                     f"{direction} <b>{alert.symbol}</b>\n\n"
                     f"Current Price: ${current_price:,.2f}\n"
                     f"Previous Price: ${previous_price:,.2f}\n"
-                    f"Change: {formatted_change}\n"
-                    f"Time since last alert: {time_str}\n\n"
+                    f"Change: {formatted_change}\n\n"
                     f"Alert Step: ${alert.price_multiplier:g}"
                 )
                 

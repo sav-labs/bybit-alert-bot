@@ -172,21 +172,6 @@ class TokenAlertService:
                 
             logger.debug(f"Checking {len(active_alerts)} active alerts")
             
-            # Загружаем необходимые атрибуты для каждого алерта
-            for alert in active_alerts:
-                _ = alert.symbol
-                _ = alert.price_multiplier
-                _ = alert.last_alert_price
-                _ = alert.user_id
-                # Проверяем last_alert_time для инициализации, если потребуется
-                try:
-                    if alert.last_alert_time is None:
-                        alert.last_alert_time = current_time - 60  # По умолчанию 1 минуту назад
-                        session.commit()
-                except (AttributeError, TypeError):
-                    alert.last_alert_time = current_time - 60
-                    session.commit()
-            
             # Group alerts by symbol to minimize API calls
             symbols = set(alert.symbol for alert in active_alerts)
             logger.debug(f"Fetching prices for {len(symbols)} symbols: {', '.join(symbols)}")
@@ -210,19 +195,6 @@ class TokenAlertService:
                 previous_price = alert.last_alert_price  # Запоминаем предыдущую цену
                 price_diff = abs(current_price - previous_price)
                 
-                # Используем чистое значение last_alert_time без модификаций
-                last_alert_time = alert.last_alert_time
-                
-                # Если last_alert_time не инициализирован, инициализируем его
-                if last_alert_time is None or last_alert_time <= 0:
-                    logger.warning(f"Alert {alert.id} for {alert.symbol} has invalid last_alert_time, initializing")
-                    last_alert_time = current_time - 60
-                    alert.last_alert_time = last_alert_time
-                    session.commit()
-                
-                # Вычисляем ФАКТИЧЕСКОЕ прошедшее время без модификаций
-                time_passed = current_time - last_alert_time
-                
                 logger.debug(f"Checking alert for {alert.symbol} (user: {alert.user_id}): current=${current_price:,.2f}, prev=${previous_price:,.2f}, diff=${price_diff:,.2f}, step=${alert.price_multiplier:g}")
                 
                 # Проверяем, нужно ли отправлять уведомление
@@ -231,19 +203,17 @@ class TokenAlertService:
                 # Только при отправке уведомления добавляем в список для отправки
                 if should_send:
                     logger.debug(f"Alert condition triggered for {alert.symbol}: price change (${price_diff:,.2f}) >= step (${alert.price_multiplier:g})")
-                    logger.debug(f"Time since last alert for {alert.symbol}: {time_passed:.1f}s (last alert time: {last_alert_time}, current time: {current_time})")
                     
                     alerts_to_send.append({
                         "alert": alert,
                         "current_price": current_price,
-                        "previous_price": previous_price,
-                        "time_passed": time_passed
+                        "previous_price": previous_price
                     })
                     
                     # ВАЖНО: обновляем last_alert_price и last_alert_time ТОЛЬКО при отправке уведомления
                     alert.last_alert_price = current_price
                     alert.last_alert_time = current_time  # Текущее время без модификаций
-                    logger.debug(f"Updated last_alert_time for {alert.symbol} to {current_time} (real current time)")
+                    logger.debug(f"Updated last_alert_price for {alert.symbol} to ${current_price:,.2f}")
             
             # Выполняем явный коммит для сохранения изменений
             session.commit()
