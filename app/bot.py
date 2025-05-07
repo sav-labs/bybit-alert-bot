@@ -19,28 +19,51 @@ def format_time_interval(seconds):
     """Format time interval in seconds to human-readable string."""
     if seconds < 0:
         return "N/A"
-    elif seconds < 0.001:  # Если время менее 1 мс
-        return "1s"  # Минимальное время - 1 секунда
-    elif seconds < 1:
-        return f"{max(1, int(seconds * 1000))}ms"  # Минимум 1ms
+    elif seconds < 1:  # Если меньше секунды
+        # Особый случай, возвращаем "сейчас" вместо миллисекунд
+        return "just now"
     
-    # Округляем до ближайшей секунды для более естественного отображения
-    seconds = int(round(seconds))
+    # Для очень маленьких значений (до 3 секунд) возвращаем "несколько секунд"
+    if seconds < 3:
+        return "few seconds ago"
+        
+    # Для значений менее минуты (но более 3 секунд)
+    if seconds < 60:
+        # Если точное значение меньше 10 или не делится на 5 (для естественности)
+        if seconds < 10 or seconds % 5 != 0:
+            s = int(seconds)
+            return f"{s}s ago"
+        else:
+            # Округляем до ближайших 5 секунд для более крупных значений
+            s = int(seconds) // 5 * 5
+            return f"{s}s ago"
     
-    hours, remainder = divmod(seconds, 3600)
+    # Для времени больше минуты делаем более разнообразное форматирование
+    total_seconds = int(seconds)
+    hours, remainder = divmod(total_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     
-    # Добавляем немного случайности для более естественного вида
-    # Это предотвратит ситуации, когда все сообщения показывают одинаковое время
-    if minutes > 0 and seconds == 0:
-        # Если ровно N минут, показываем с секундами для разнообразия
-        return f"{minutes}m {seconds}s"
-    elif hours > 0:
-        return f"{hours}h {minutes}m"
-    elif minutes > 0:
-        return f"{minutes}m {seconds}s"
-    else:
-        return f"{seconds}s"
+    # Для значений более часа
+    if hours > 0:
+        # Разнообразие форматов для более естественного отображения
+        if minutes == 0:
+            return f"{hours}h ago"
+        elif seconds == 0 or total_seconds > 7200:  # Более 2 часов без секунд
+            return f"{hours}h {minutes}m ago"
+        else:
+            return f"{hours}h {minutes}m {seconds}s ago"
+    
+    # Для значений более минуты, но менее часа
+    if minutes > 0:
+        if seconds == 0 or minutes > 10:
+            # Для больших значений минут опускаем секунды
+            return f"{minutes}m ago"
+        else:
+            # Для значений менее 10 минут показываем секунды
+            return f"{minutes}m {seconds}s ago"
+    
+    # Если ничего не сработало, возвращаем просто секунды
+    return f"{total_seconds}s ago"
 
 async def alert_worker():
     """Separate worker to check prices and send alerts."""

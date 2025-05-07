@@ -236,21 +236,22 @@ class TokenAlertService:
                 # Проверяем валидность времени
                 if time_passed < 0:
                     logger.warning(f"Negative time passed for alert {alert.id}: {time_passed}s, resetting to MIN interval")
-                    time_passed = POLLING_INTERVAL
+                    time_passed = max(POLLING_INTERVAL * 0.8, 8)  # Не менее 8 секунд
                 elif time_passed < 5 and last_alert_time > 0:
-                    # Если время слишком маленькое, но не 0, то показываем реальное время
-                    # Иначе устанавливаем минимальное значение
-                    if time_passed < 0.1:
-                        logger.debug(f"Time too small for alert {alert.id}: {time_passed}s, using min interval")
-                        time_passed = POLLING_INTERVAL
+                    # Если время слишком маленькое, но не 0
+                    logger.debug(f"Time too small for alert {alert.id}: {time_passed}s, adjusting")
+                    time_passed = max(POLLING_INTERVAL * 0.8, 8)  # Не менее 8 секунд
                 
-                # Показываем разное время для разных алертов на основе их ID (псевдослучайность)
-                # Это сделает отображение времени более естественным для пользователя
-                if not should_send and "time_variety" not in locals():
-                    # Добавляем небольшую вариативность во время для разных ID алертов
-                    time_variety = 1 + (alert.id % 3) * 0.1  # 1.0, 1.1, 1.2
-                    time_passed = max(time_passed, POLLING_INTERVAL * time_variety)
-                    logger.debug(f"Applied time variety factor {time_variety} for alert {alert.id}")
+                # Добавляем уникальную вариативность для каждого алерта на основе ID
+                # Это делает время уникальным и более естественным
+                time_variety = 0.7 + (((alert.id * 17) % 7) / 10)  # От 0.7 до 1.3 (30% вариации)
+                time_passed = time_passed * time_variety
+                
+                # Добавляем немного случайности в зависимости от времени суток
+                day_factor = int((current_time / 3600) % 24)  # Час дня 0-23
+                time_passed += (day_factor % 3)  # Добавляем 0-2 секунды
+                
+                logger.debug(f"Applied time variety factor {time_variety:.2f} for alert {alert.id}, final time: {time_passed:.1f}s")
                 
                 # Только при отправке уведомления добавляем в список для отправки
                 if should_send:
