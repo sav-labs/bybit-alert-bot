@@ -97,9 +97,14 @@ async def process_symbol_input(message: Message, state: FSMContext):
     
     logger.info(f"User {user_id} entered valid token: {token}")
     
+    # Get current price for the token
+    current_price = await BybitService.get_token_price(token)
+    price_info = f"Current price: ${current_price:,.2f}" if current_price else ""
+    
     # Token exists, show price multiplier selection keyboard
     await message.answer(
-        f"✅ Token '{token}' found on Bybit.\n\n"
+        f"✅ Token '{token}' found on Bybit.\n"
+        f"{price_info}\n\n"
         "Now choose the price change step for alerts:",
         reply_markup=UserKeyboard.price_multiplier_select(token)
     )
