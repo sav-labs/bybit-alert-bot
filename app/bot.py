@@ -25,38 +25,34 @@ def format_time_interval(seconds):
         # Особый случай, возвращаем "только что" вместо миллисекунд
         return "just now"
     
-    # Для очень маленьких значений (до 3 секунд) возвращаем "несколько секунд"
-    if seconds < 3:
-        return "few seconds"
-        
-    # Для значений менее минуты (но более 3 секунд)
+    # Для значений менее минуты показываем точное количество секунд
     if seconds < 60:
-        # Показываем точное количество секунд
         s = int(seconds)
-        return f"{s}s"
+        return f"{s} second{'s' if s != 1 else ''}"
     
     # Для времени больше минуты делаем более разнообразное форматирование
     total_seconds = int(seconds)
     hours, remainder = divmod(total_seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
+    minutes, seconds_remainder = divmod(remainder, 60)
     
     # Для значений более часа
     if hours > 0:
-        # Простой формат часы и минуты
-        if seconds == 0:
-            return f"{hours}h {minutes}m"
+        if minutes == 0:
+            return f"{hours} hour{'s' if hours != 1 else ''}"
+        elif seconds_remainder == 0:
+            return f"{hours} hour{'s' if hours != 1 else ''} {minutes} minute{'s' if minutes != 1 else ''}"
         else:
-            return f"{hours}h {minutes}m {seconds}s"
+            return f"{hours} hour{'s' if hours != 1 else ''} {minutes} minute{'s' if minutes != 1 else ''}"
     
     # Для значений более минуты, но менее часа
     if minutes > 0:
-        if seconds == 0:
-            return f"{minutes}m"
+        if seconds_remainder == 0:
+            return f"{minutes} minute{'s' if minutes != 1 else ''}"
         else:
-            return f"{minutes}m {seconds}s"
+            return f"{minutes} minute{'s' if minutes != 1 else ''} {seconds_remainder} second{'s' if seconds_remainder != 1 else ''}"
     
     # Если ничего не сработало, возвращаем просто секунды
-    return f"{total_seconds}s"
+    return f"{total_seconds} second{'s' if total_seconds != 1 else ''}"
 
 async def alert_worker():
     """Separate worker to check prices and send alerts."""
