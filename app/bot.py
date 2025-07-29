@@ -28,7 +28,7 @@ def format_time_interval(seconds):
     # Для значений менее минуты показываем точное количество секунд
     if seconds < 60:
         s = int(seconds)
-        return f"{s} second{'s' if s != 1 else ''}"
+        return f"{s}s"
     
     # Для времени больше минуты делаем более разнообразное форматирование
     total_seconds = int(seconds)
@@ -38,21 +38,21 @@ def format_time_interval(seconds):
     # Для значений более часа
     if hours > 0:
         if minutes == 0:
-            return f"{hours} hour{'s' if hours != 1 else ''}"
+            return f"{hours}h"
         elif seconds_remainder == 0:
-            return f"{hours} hour{'s' if hours != 1 else ''} {minutes} minute{'s' if minutes != 1 else ''}"
+            return f"{hours}h {minutes}m"
         else:
-            return f"{hours} hour{'s' if hours != 1 else ''} {minutes} minute{'s' if minutes != 1 else ''}"
+            return f"{hours}h {minutes}m"
     
     # Для значений более минуты, но менее часа
     if minutes > 0:
         if seconds_remainder == 0:
-            return f"{minutes} minute{'s' if minutes != 1 else ''}"
+            return f"{minutes}m"
         else:
-            return f"{minutes} minute{'s' if minutes != 1 else ''} {seconds_remainder} second{'s' if seconds_remainder != 1 else ''}"
+            return f"{minutes}m {seconds_remainder}s"
     
     # Если ничего не сработало, возвращаем просто секунды
-    return f"{total_seconds} second{'s' if total_seconds != 1 else ''}"
+    return f"{total_seconds}s"
 
 async def alert_worker():
     """Separate worker to check prices and send alerts."""
@@ -64,6 +64,7 @@ async def alert_worker():
                 alert = alert_data["alert"]
                 current_price = alert_data["current_price"]
                 previous_price = alert_data["previous_price"]
+                old_alert_time = alert_data.get("old_alert_time")  # Получаем старое время
                 
                 # Calculate price change percentage
                 if previous_price > 0:
@@ -82,29 +83,26 @@ async def alert_worker():
                 # Format previous price with date/time and time since last update
                 current_time = time.time()
                 
-                # Format previous price with date/time
-                if hasattr(alert, 'last_alert_time') and alert.last_alert_time:
+                # Используем СТАРОЕ время для расчета интервала
+                if old_alert_time:
                     # Convert timestamp to datetime
-                    last_update_dt = datetime.fromtimestamp(alert.last_alert_time)
+                    last_update_dt = datetime.fromtimestamp(old_alert_time)
                     formatted_date = last_update_dt.strftime("%d.%m.%Y %H:%M")
                     
-                    # Calculate time since last update
-                    time_since_update = current_time - alert.last_alert_time
+                    # Calculate time since last update (используем старое время!)
+                    time_since_update = current_time - old_alert_time
                     time_interval_str = format_time_interval(time_since_update)
                     
-                    previous_price_line = f"Previous Price: ${previous_price:,.2f} ({formatted_date})"
-                    time_since_line = f"Time Since Last Update: {time_interval_str} ago"
+                    prev_line = f"Prev: ${previous_price:,.2f} ({formatted_date}, {time_interval_str} ago)"
                 else:
                     # Fallback for old alerts without timestamp
-                    previous_price_line = f"Previous Price: ${previous_price:,.2f}"
-                    time_since_line = "Time Since Last Update: N/A"
+                    prev_line = f"Prev: ${previous_price:,.2f}"
                 
-                # Format message with new format
+                # Format message with new compact format
                 message = (
                     f"{direction} <b>{alert.symbol}</b>\n\n"
-                    f"Current Price: ${current_price:,.2f}\n"
-                    f"{previous_price_line}\n"
-                    f"{time_since_line}\n"
+                    f"Price: ${current_price:,.2f}\n"
+                    f"{prev_line}\n"
                     f"Change: {formatted_change}\n\n"
                     f"Alert Step: ${alert.price_multiplier:g}"
                 )

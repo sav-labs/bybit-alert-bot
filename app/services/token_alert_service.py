@@ -216,10 +216,15 @@ class TokenAlertService:
                 
                 if should_send:
                     logger.debug(f"Alert condition triggered for {alert.symbol}: price change (${price_diff:,.2f}) >= step (${alert.price_multiplier:g})")
+                    
+                    # Сохраняем старое время ДО обновления
+                    old_alert_time = getattr(alert, 'last_alert_time', None)
+                    
                     alerts_to_trigger.append({
                         "alert": alert,
                         "current_price": current_price,
-                        "previous_price": previous_price
+                        "previous_price": previous_price,
+                        "old_alert_time": old_alert_time  # Добавляем старое время
                     })
             
             # Now update last_alert_price for all alerts that need to be triggered
