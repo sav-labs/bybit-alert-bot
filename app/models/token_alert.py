@@ -11,6 +11,7 @@ class TokenAlert(Base):
     price_multiplier = Column(Float, nullable=False)
     is_active = Column(Boolean, default=True)
     last_alert_price = Column(Float, nullable=True)
+    last_alert_time = Column(Float, nullable=True)  # Unix timestamp of last alert
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
