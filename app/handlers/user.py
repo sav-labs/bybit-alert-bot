@@ -177,8 +177,8 @@ async def check_token_message(message: Message, state: FSMContext):
         return
     
     current_state = await state.get_state()
-    # Если уже в режиме ожидания токена, не обрабатываем
-    if current_state in [AddAlertStates.waiting_for_symbol.state, AddAlertStates.waiting_for_custom_token.state]:
+    # Если в любом состоянии FSM, не обрабатываем (пусть обработчики состояний обрабатывают)
+    if current_state:
         return
     
     symbol = message.text.strip().upper()
