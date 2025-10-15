@@ -232,6 +232,19 @@ async def set_price_multiplier(callback: CallbackQuery):
     
     await callback.answer()
 
+@router.callback_query(F.data.startswith("custom_multiplier:"))
+async def enter_custom_multiplier(callback: CallbackQuery, state: FSMContext):
+    """Allow user to enter a custom price multiplier for a new alert."""
+    symbol = callback.data.split(":")[1]
+    
+    await state.set_state(AddAlertStates.waiting_for_custom_threshold)
+    await state.update_data(token=symbol)
+    
+    await callback.message.edit_text(
+        f"Please enter a custom alert step value for {symbol} (e.g. 0.5, 1.25, 333):"
+    )
+    await callback.answer()
+
 @router.callback_query(F.data == "my_alerts")
 async def show_user_alerts(callback: CallbackQuery):
     """Show user's configured alerts."""

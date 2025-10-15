@@ -79,6 +79,12 @@ class UserKeyboard:
                 callback_data=f"set_multiplier:{symbol}:{multiplier}"
             )])
         
+        # Add custom value button
+        buttons.append([InlineKeyboardButton(
+            text="✏️ Enter Custom Value", 
+            callback_data=f"custom_multiplier:{symbol}"
+        )])
+        
         # Add back button
         buttons.append([InlineKeyboardButton(text="🔙 Back", callback_data="available_tokens")])
         
