@@ -658,14 +658,14 @@ async def process_custom_threshold(message: Message, state: FSMContext):
             if alert:
                 logger.info(f"Successfully updated alert for {alert.symbol} with step ${new_threshold:g}")
                 await message.answer(
-                    f"Step for {alert.symbol} alert updated to ${new_threshold:g}.\n\n"
-                    f"Alert options for {alert.symbol} (${alert.price_multiplier:g}):\n"
+                    f"✅ Alert step updated successfully!\n\n"
+                    f"{alert.symbol}: ${new_threshold:g} step\n"
                     f"Status: {'Active' if alert.is_active else 'Disabled'}",
-                    reply_markup=UserKeyboard.alert_options(alert.id, alert.is_active)
+                    reply_markup=UserKeyboard.dashboard_menu()
                 )
             else:
                 await message.answer(
-                    f"Alert step updated to ${new_threshold:g}",
+                    f"✅ Alert step updated to ${new_threshold:g}",
                     reply_markup=UserKeyboard.dashboard_menu()
                 )
         else:
