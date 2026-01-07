@@ -56,9 +56,12 @@ async def enter_custom_token(callback: CallbackQuery, state: FSMContext):
 async def process_custom_token_input(message: Message, state: FSMContext):
     """Process custom token input from user."""
     # Check if user is trying to use menu commands - exit FSM state
-    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
-    if message.text.strip() in menu_commands:
+    if message.text.strip() in ["🏠 My Dashboard", "My Dashboard"]:
         await state.clear()
+        await message.answer(
+            "Welcome to your dashboard!",
+            reply_markup=UserKeyboard.dashboard_menu()
+        )
         return
     
     symbol = message.text.strip().upper()
@@ -88,9 +91,12 @@ async def process_custom_token_input(message: Message, state: FSMContext):
 async def process_symbol_input(message: Message, state: FSMContext):
     """Handler for token input during alert creation."""
     # Check if user is trying to use menu commands - exit FSM state
-    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
-    if message.text.strip() in menu_commands:
+    if message.text.strip() in ["🏠 My Dashboard", "My Dashboard"]:
         await state.clear()
+        await message.answer(
+            "Welcome to your dashboard!",
+            reply_markup=UserKeyboard.dashboard_menu()
+        )
         return
     
     token = message.text.strip().upper()
@@ -129,9 +135,12 @@ async def process_symbol_input(message: Message, state: FSMContext):
 async def process_price_step_input(message: Message, state: FSMContext):
     """Process price step input after finding a token."""
     # Check if user is trying to use menu commands - exit FSM state
-    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
-    if message.text.strip() in menu_commands:
+    if message.text.strip() in ["🏠 My Dashboard", "My Dashboard"]:
         await state.clear()
+        await message.answer(
+            "Welcome to your dashboard!",
+            reply_markup=UserKeyboard.dashboard_menu()
+        )
         return
     
     user_id = message.from_user.id
@@ -586,10 +595,12 @@ async def enter_custom_threshold(callback: CallbackQuery, state: FSMContext):
 async def process_custom_threshold(message: Message, state: FSMContext):
     """Process custom threshold input."""
     # Check if user is trying to use menu commands - exit FSM state
-    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
-    if message.text.strip() in menu_commands:
+    if message.text.strip() in ["🏠 My Dashboard", "My Dashboard"]:
         await state.clear()
-        # Let the message be handled by the appropriate menu handler
+        await message.answer(
+            "✅ Operation cancelled. Welcome to your dashboard!",
+            reply_markup=UserKeyboard.dashboard_menu()
+        )
         return
     
     # Get state data
