@@ -195,8 +195,13 @@ async def process_price_step_input(message: Message, state: FSMContext):
     await state.clear()
 
 # Функция-фильтр для проверки, является ли сообщение токеном
-def is_potential_token(message: Message) -> bool:
+async def is_potential_token(message: Message, state: FSMContext) -> bool:
     """Check if message text looks like a token symbol."""
+    # ВАЖНО: Проверяем FSM состояние ЗДЕСЬ, чтобы не перехватывать сообщения в FSM режиме
+    current_state = await state.get_state()
+    if current_state is not None:
+        return False
+    
     text = message.text.strip()
     
     # Пропускаем команды меню
@@ -211,10 +216,6 @@ def is_potential_token(message: Message) -> bool:
 @router.message(is_potential_token)
 async def check_token_message(message: Message, state: FSMContext):
     """Check if a message might be a token and validate it."""
-    # Если в любом состоянии FSM, не обрабатываем (пусть обработчики состояний обрабатывают)
-    current_state = await state.get_state()
-    if current_state:
-        return
     
     symbol = message.text.strip().upper()
     user_id = message.from_user.id
