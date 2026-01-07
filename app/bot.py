@@ -111,7 +111,13 @@ async def alert_worker():
                     await bot.send_message(chat_id=alert.user_id, text=message, parse_mode="HTML")
                     logger.info(f"Sent price alert to user {alert.user_id} for {alert.symbol} (${current_price:,.2f})")
                 except Exception as e:
-                    logger.error(f"Failed to send alert to user {alert.user_id}: {e}")
+                    error_text = str(e)
+                    # If bot was blocked by user, deactivate their alerts
+                    if "bot was blocked by the user" in error_text.lower() or "forbidden" in error_text.lower():
+                        logger.warning(f"Bot was blocked by user {alert.user_id}. Deactivating their alerts...")
+                        await TokenAlertService.deactivate_user_alerts(alert.user_id)
+                    else:
+                        logger.error(f"Failed to send alert to user {alert.user_id}: {e}")
             
         except Exception as e:
             logger.error(f"Error in alert worker: {e}")

@@ -55,6 +55,12 @@ async def enter_custom_token(callback: CallbackQuery, state: FSMContext):
 @router.message(AddAlertStates.waiting_for_custom_token)
 async def process_custom_token_input(message: Message, state: FSMContext):
     """Process custom token input from user."""
+    # Check if user is trying to use menu commands - exit FSM state
+    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
+    if message.text.strip() in menu_commands:
+        await state.clear()
+        return
+    
     symbol = message.text.strip().upper()
     
     # Check if token exists
@@ -81,6 +87,12 @@ async def process_custom_token_input(message: Message, state: FSMContext):
 @router.message(AddAlertStates.waiting_for_symbol)
 async def process_symbol_input(message: Message, state: FSMContext):
     """Handler for token input during alert creation."""
+    # Check if user is trying to use menu commands - exit FSM state
+    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
+    if message.text.strip() in menu_commands:
+        await state.clear()
+        return
+    
     token = message.text.strip().upper()
     user_id = message.from_user.id
     logger.info(f"User {user_id} entered token: {token}")
@@ -116,6 +128,12 @@ async def process_symbol_input(message: Message, state: FSMContext):
 @router.message(AddAlertStates.waiting_for_price_step)
 async def process_price_step_input(message: Message, state: FSMContext):
     """Process price step input after finding a token."""
+    # Check if user is trying to use menu commands - exit FSM state
+    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
+    if message.text.strip() in menu_commands:
+        await state.clear()
+        return
+    
     user_id = message.from_user.id
     step_value = message.text.strip()
     logger.info(f"User {user_id} entered price step: {step_value}")
@@ -167,17 +185,25 @@ async def process_price_step_input(message: Message, state: FSMContext):
     # Clear state
     await state.clear()
 
+# Функция-фильтр для проверки, является ли сообщение токеном
+def is_potential_token(message: Message) -> bool:
+    """Check if message text looks like a token symbol."""
+    text = message.text.strip()
+    
+    # Пропускаем команды меню
+    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
+    if text in menu_commands:
+        return False
+    
+    # Проверяем, похоже ли на токен
+    return TOKEN_PATTERN.match(text.upper()) is not None
+
 # Добавим обработчик для проверки, является ли сообщение токеном
-@router.message(lambda message: TOKEN_PATTERN.match(message.text.strip().upper()))
+@router.message(is_potential_token)
 async def check_token_message(message: Message, state: FSMContext):
     """Check if a message might be a token and validate it."""
-    # Пропускаем сообщения, которые совпадают с командами меню
-    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
-    if message.text.strip() in menu_commands:
-        return
-    
-    current_state = await state.get_state()
     # Если в любом состоянии FSM, не обрабатываем (пусть обработчики состояний обрабатывают)
+    current_state = await state.get_state()
     if current_state:
         return
     
@@ -559,6 +585,13 @@ async def enter_custom_threshold(callback: CallbackQuery, state: FSMContext):
 @router.message(AddAlertStates.waiting_for_custom_threshold)
 async def process_custom_threshold(message: Message, state: FSMContext):
     """Process custom threshold input."""
+    # Check if user is trying to use menu commands - exit FSM state
+    menu_commands = ["🏠 My Dashboard", "My Dashboard", "👥 User Management", "User Management", "📞 Support", "Support"]
+    if message.text.strip() in menu_commands:
+        await state.clear()
+        # Let the message be handled by the appropriate menu handler
+        return
+    
     # Get state data
     state_data = await state.get_data()
     alert_id = state_data.get("alert_id")

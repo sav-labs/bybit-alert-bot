@@ -264,6 +264,32 @@ class TokenAlertService:
             session.close()
     
     @staticmethod
+    async def deactivate_user_alerts(user_id: int) -> bool:
+        """Deactivate all alerts for a user (e.g., when bot is blocked)."""
+        session = get_session()
+        try:
+            alerts = session.query(TokenAlert).filter(
+                TokenAlert.user_id == user_id,
+                TokenAlert.is_active == True
+            ).all()
+            
+            if not alerts:
+                return True
+            
+            for alert in alerts:
+                alert.is_active = False
+            
+            session.commit()
+            logger.info(f"Deactivated {len(alerts)} alerts for user {user_id} (bot blocked)")
+            return True
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"Error deactivating alerts for user {user_id}: {e}")
+            return False
+        finally:
+            session.close()
+    
+    @staticmethod
     async def update_threshold(alert_id: int, new_threshold: float) -> bool:
         """Update the threshold for an alert."""
         if new_threshold <= 0:

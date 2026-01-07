@@ -54,9 +54,31 @@ async def cmd_start(message: Message):
         reply_markup=keyboard
     )
 
+@router.message(Command("cancel"))
+async def cmd_cancel(message: Message, state: FSMContext):
+    """Cancel current operation and clear FSM state."""
+    current_state = await state.get_state()
+    
+    if current_state is None:
+        await message.answer(
+            "No active operation to cancel.",
+            reply_markup=UserKeyboard.dashboard_menu()
+        )
+        return
+    
+    await state.clear()
+    await message.answer(
+        "✅ Operation cancelled.",
+        reply_markup=UserKeyboard.dashboard_menu()
+    )
+    logger.info(f"User {message.from_user.id} cancelled operation from state: {current_state}")
+
 @router.message(F.text.in_(["🏠 My Dashboard", "My Dashboard"]))
-async def show_dashboard(message: Message):
+async def show_dashboard(message: Message, state: FSMContext):
     """Show user dashboard."""
+    # Clear any active FSM state
+    await state.clear()
+    
     user_id = message.from_user.id
     user = await UserService.get_user(user_id)
     
